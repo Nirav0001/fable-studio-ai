@@ -1,8 +1,9 @@
 import type { VideoStatus, VideoSummary } from "@fable/shared";
 import { QUEUE_JOBS, clamp, fnv1a, pick, safeJson, seededRandom } from "@fable/shared";
-import { env } from "../../config/env";
 import { badRequest, conflict, notFound } from "../../lib/errors";
 import { prisma } from "../../lib/prisma";
+import { activeKeys } from "../../lib/providerKeys";
+import { deleteVideo as deleteYoutubeVideo } from "../../services/youtube";
 import { enqueue } from "../../queue/queue";
 
 // ── Structural row types (subset of the Prisma models we map from) ───────────
@@ -91,9 +92,12 @@ function toAbTest(test: AbTestRow) {
 
 function channelTrulyConnected(channel: { connected: boolean; youtubeJson: string }): boolean {
   const yt = safeJson<StoredYoutube>(channel.youtubeJson, {});
+  // Key presence comes from the active per-user key context (request-scoped),
+  // falling back to server env keys.
+  const keys = activeKeys();
   return (
     channel.connected &&
-    Boolean(env.ytClientId && env.ytClientSecret) &&
+    Boolean(keys.ytClientId && keys.ytClientSecret) &&
     !yt.mock &&
     Boolean(yt.refreshToken) &&
     !(yt.refreshToken ?? "").startsWith("mock-")
@@ -271,25 +275,16 @@ export async function uploadVideoNow(userId: string, videoId: string) {
   };
 }
 
-/** Best-effort real deletion on YouTube — silently skipped in mock mode. */
-async function attemptYoutubeDelete(youtubeJson: string, youtubeId: string): Promise<void> {
-  try {
-    const yt = safeJson<StoredYoutube>(youtubeJson, {});
-    const accessToken = yt.accessToken;
-    if (!accessToken || yt.mock || youtubeId.startsWith("mock-")) return;
-    await fetch(`https://www.googleapis.com/youtube/v3/videos?id=${encodeURIComponent(youtubeId)}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-  } catch {
-    // best-effort — the local row is deleted regardless
-  }
-}
-
 export async function deleteVideo(userId: string, videoId: string) {
   const video = await getOwnedVideoWithChannel(userId, videoId);
   if (video.status === "published" && video.youtubeId && channelTrulyConnected(video.channel)) {
-    await attemptYoutubeDelete(video.channel.youtubeJson, video.youtubeId);
+    // Best-effort real deletion via the youtube service — it refreshes the
+    // access token with the owner's OAuth creds first (stored tokens are
+    // usually expired) and no-ops cleanly for mock ids/channels.
+    const channel = await prisma.channel.findUnique({ where: { id: video.channel.id } });
+    if (channel) {
+      await deleteYoutubeVideo(channel, video.youtubeId).catch(() => undefined);
+    }
   }
   await prisma.video.delete({ where: { id: video.id } });
   return { deleted: true };

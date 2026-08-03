@@ -7,6 +7,7 @@ import type { Channel, Video } from "@prisma/client";
 import { env } from "../../config/env";
 import { createLogger } from "../../lib/logger";
 import { prisma } from "../../lib/prisma";
+import { getUserKeys } from "../../lib/providerKeys";
 
 const log = createLogger("youtube");
 
@@ -26,6 +27,23 @@ export interface YoutubeTokens {
 
 export function isYoutubeConfigured(): boolean {
   return Boolean(env.ytClientId && env.ytClientSecret);
+}
+
+interface YtClientCreds {
+  id: string;
+  secret: string;
+}
+
+/** OAuth client for a user: their own keys (Settings) with env fallback. */
+async function ytCreds(userId: string): Promise<YtClientCreds> {
+  const keys = await getUserKeys(userId);
+  return { id: keys.ytClientId, secret: keys.ytClientSecret };
+}
+
+/** Per-user check — true when the user has OAuth keys (own or server env). */
+export async function isYoutubeConfiguredFor(userId: string): Promise<boolean> {
+  const creds = await ytCreds(userId);
+  return Boolean(creds.id && creds.secret);
 }
 
 function redirectUri(): string {
@@ -61,11 +79,12 @@ function readTokens(channel: Channel): YoutubeTokens {
   };
 }
 
-/** True only when the channel holds genuine OAuth tokens AND keys are set. */
-export function hasRealYoutubeTokens(channel: Channel): boolean {
-  if (!isYoutubeConfigured() || !channel.connected) return false;
+/** True only when the channel holds genuine OAuth tokens AND its owner has keys. */
+export async function hasRealYoutubeTokens(channel: Channel): Promise<boolean> {
+  if (!channel.connected) return false;
   const tokens = readTokens(channel);
-  return !tokens.mock && Boolean(tokens.refreshToken) && !tokens.refreshToken.startsWith("mock-");
+  if (tokens.mock || !tokens.refreshToken || tokens.refreshToken.startsWith("mock-")) return false;
+  return isYoutubeConfiguredFor(channel.userId);
 }
 
 interface OAuthState {
@@ -91,11 +110,12 @@ export function verifyOAuthState(state: string): OAuthState | null {
   return null;
 }
 
-/** Google OAuth consent URL — null when API keys are not configured (mock mode). */
-export function getAuthUrl(channelId: string, userId: string): string | null {
-  if (!isYoutubeConfigured()) return null;
+/** Google OAuth consent URL — null when the user has no OAuth keys configured. */
+export async function getAuthUrl(channelId: string, userId: string): Promise<string | null> {
+  const creds = await ytCreds(userId);
+  if (!creds.id || !creds.secret) return null;
   const params = new URLSearchParams({
-    client_id: env.ytClientId,
+    client_id: creds.id,
     redirect_uri: redirectUri(),
     response_type: "code",
     scope: OAUTH_SCOPES.join(" "),
@@ -116,16 +136,20 @@ interface GoogleTokenResponse {
   error_description?: string;
 }
 
-/** Exchange an OAuth code for tokens. Mock tokens when keys are missing. */
-export async function exchangeCode(code: string): Promise<YoutubeTokens> {
-  if (!isYoutubeConfigured()) return mockTokens();
+/** Exchange an OAuth code for tokens with the user's OAuth client. */
+export async function exchangeCode(code: string, userId: string): Promise<YoutubeTokens> {
+  const creds = await ytCreds(userId);
+  if (!creds.id || !creds.secret) {
+    if (!env.isProd) return mockTokens();
+    throw new Error("YouTube OAuth keys are not configured");
+  }
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       code,
-      client_id: env.ytClientId,
-      client_secret: env.ytClientSecret,
+      client_id: creds.id,
+      client_secret: creds.secret,
       redirect_uri: redirectUri(),
       grant_type: "authorization_code",
     }),
@@ -144,16 +168,18 @@ export async function exchangeCode(code: string): Promise<YoutubeTokens> {
   };
 }
 
-/** Refresh an access token. No-op passthrough in mock mode. */
-export async function refreshToken(tokens: YoutubeTokens): Promise<YoutubeTokens> {
-  if (!isYoutubeConfigured() || tokens.mock || !tokens.refreshToken) return tokens;
+/** Refresh an access token. No-op passthrough in mock mode / without keys. */
+export async function refreshToken(tokens: YoutubeTokens, userId: string): Promise<YoutubeTokens> {
+  if (tokens.mock || !tokens.refreshToken) return tokens;
+  const creds = await ytCreds(userId);
+  if (!creds.id || !creds.secret) return tokens;
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       refresh_token: tokens.refreshToken,
-      client_id: env.ytClientId,
-      client_secret: env.ytClientSecret,
+      client_id: creds.id,
+      client_secret: creds.secret,
       grant_type: "refresh_token",
     }),
   });
@@ -174,7 +200,7 @@ export async function refreshToken(tokens: YoutubeTokens): Promise<YoutubeTokens
 async function freshTokens(channel: Channel): Promise<YoutubeTokens> {
   let tokens = readTokens(channel);
   if (tokens.expiryMs < Date.now() + 60_000) {
-    tokens = await refreshToken(tokens);
+    tokens = await refreshToken(tokens, channel.userId);
     const existing = safeJson<Record<string, unknown>>(channel.youtubeJson, {});
     await prisma.channel.update({
       where: { id: channel.id },
@@ -189,7 +215,7 @@ async function freshTokens(channel: Channel): Promise<YoutubeTokens> {
  * mock youtubeId when the channel has no genuine credentials.
  */
 export async function uploadVideo(channel: Channel, video: Video): Promise<{ youtubeId: string }> {
-  if (!hasRealYoutubeTokens(channel)) {
+  if (!(await hasRealYoutubeTokens(channel))) {
     return { youtubeId: `mock-${video.id}` };
   }
   const tokens = await freshTokens(channel);
@@ -262,7 +288,7 @@ export interface MyChannelInfo {
 
 /** The connected account's real channel identity (title, @handle, subs). */
 export async function fetchMyChannel(channel: Channel): Promise<MyChannelInfo | null> {
-  if (!hasRealYoutubeTokens(channel)) return null;
+  if (!(await hasRealYoutubeTokens(channel))) return null;
   const tokens = await freshTokens(channel);
   const res = await fetch(
     "https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true",
@@ -302,7 +328,7 @@ function startOfToday(): Date {
 export async function syncVideoStats(
   channel: Channel,
 ): Promise<{ synced: number; mock: boolean }> {
-  if (!hasRealYoutubeTokens(channel)) return { synced: 0, mock: true };
+  if (!(await hasRealYoutubeTokens(channel))) return { synced: 0, mock: true };
   const videos = await prisma.video.findMany({
     where: { channelId: channel.id, status: "published", youtubeId: { not: null } },
     select: { id: true, youtubeId: true },
@@ -373,7 +399,7 @@ export async function refreshChannelIdentity(channel: Channel): Promise<boolean>
 
 /** Delete a video from YouTube. No-op success for mock ids / mock mode. */
 export async function deleteVideo(channel: Channel, youtubeId: string): Promise<boolean> {
-  if (!hasRealYoutubeTokens(channel) || youtubeId.startsWith("mock-")) return true;
+  if (!(await hasRealYoutubeTokens(channel)) || youtubeId.startsWith("mock-")) return true;
   try {
     const tokens = await freshTokens(channel);
     const res = await fetch(
@@ -397,7 +423,7 @@ interface AnalyticsReport {
  * analytics layer and must not be clobbered.
  */
 export async function syncAnalytics(channel: Channel): Promise<{ synced: number; mock: boolean }> {
-  if (!hasRealYoutubeTokens(channel)) return { synced: 0, mock: true };
+  if (!(await hasRealYoutubeTokens(channel))) return { synced: 0, mock: true };
 
   const tokens = await freshTokens(channel);
   const end = new Date();

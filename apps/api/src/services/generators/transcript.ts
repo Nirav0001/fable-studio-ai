@@ -12,6 +12,7 @@ import type { TranscriptSegment } from "@fable/shared";
 import { fnv1a, seededRandom } from "@fable/shared";
 import { env } from "../../config/env";
 import { hasYtdlp } from "../../lib/capabilities";
+import { activeKeys } from "../../lib/providerKeys";
 import { createLogger } from "../../lib/logger";
 import { addUsage, estimateTokens } from "../ai";
 
@@ -186,7 +187,7 @@ async function transcribeWithWhisper(sourceUrl: string): Promise<TranscriptSegme
 
     const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
       method: "POST",
-      headers: { authorization: `Bearer ${env.openaiKey}` },
+      headers: { authorization: `Bearer ${activeKeys().openaiKey}` },
       body: form,
       signal: AbortSignal.timeout(120_000),
     });
@@ -319,7 +320,7 @@ async function fetchYoutubeCaptions(sourceUrl: string): Promise<TranscriptSegmen
 export async function getTranscript(sourceUrl: string): Promise<TranscriptSegment[]> {
   const ytdlpOk = await hasYtdlp();
 
-  if (ytdlpOk && env.openaiKey) {
+  if (ytdlpOk && activeKeys().openaiKey) {
     try {
       const real = await transcribeWithWhisper(sourceUrl);
       if (real.length > 0) {

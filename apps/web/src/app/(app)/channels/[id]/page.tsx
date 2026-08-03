@@ -115,15 +115,28 @@ export default function ChannelDetailPage() {
     mutationFn: () => api.post<ConnectResponse>(`/channels/${id}/connect`),
     onSuccess: (data) => {
       if (data.authUrl) {
-        window.open(data.authUrl, "_blank", "noopener,noreferrer");
-        toast.info("Finish connecting in the Google tab we just opened");
+        // Same-tab redirect — window.open here would be popup-blocked (we're
+        // in an async continuation, not the click). Google redirects back to
+        // /channels when done.
+        toast.info("Taking you to Google to connect…");
+        window.location.assign(data.authUrl);
       } else {
         toast.success("Channel connected");
+        qc.invalidateQueries({ queryKey: ["channel", id] });
+        qc.invalidateQueries({ queryKey: ["channels"] });
       }
-      qc.invalidateQueries({ queryKey: ["channel", id] });
-      qc.invalidateQueries({ queryKey: ["channels"] });
     },
-    onError: (err) => toast.error(err instanceof ApiError ? err.message : "Could not connect channel"),
+    onError: (err) => {
+      if (err instanceof ApiError && err.code === "YT_KEYS_MISSING") {
+        toast.error("YouTube keys needed", {
+          description:
+            "Add your YouTube Client ID & Secret in Settings → Provider keys, then try again.",
+          action: { label: "Open Settings", onClick: () => (window.location.href = "/settings") },
+        });
+        return;
+      }
+      toast.error(err instanceof ApiError ? err.message : "Could not connect channel");
+    },
   });
 
   const disconnect = useMutation({

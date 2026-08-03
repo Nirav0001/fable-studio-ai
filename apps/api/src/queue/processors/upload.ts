@@ -1,8 +1,9 @@
 import { QUEUE_JOBS } from "@fable/shared";
+import { env } from "../../config/env";
 import { createLogger } from "../../lib/logger";
 import { prisma } from "../../lib/prisma";
 import { notify } from "../../modules/notifications/notify";
-import { hasRealYoutubeTokens, isYoutubeConfigured, uploadVideo } from "../../services/youtube";
+import { hasRealYoutubeTokens, isYoutubeConfiguredFor, uploadVideo } from "../../services/youtube";
 import { enqueue, payloadString, updateJob } from "../queue";
 import type { JobPayload } from "../queue";
 
@@ -45,11 +46,13 @@ export async function processUpload(payload: JobPayload): Promise<void> {
     return;
   }
   const userId = video.channel.userId;
-  const realUpload = hasRealYoutubeTokens(video.channel);
+  const realUpload = await hasRealYoutubeTokens(video.channel);
 
-  // With real YouTube credentials configured, never mock-publish an
-  // unconnected channel — park the video instead of faking a result.
-  if (!realUpload && isYoutubeConfigured()) {
+  // Never mock-publish in production — a video must not be marked "published"
+  // with a fake id. Park it whenever a real upload isn't possible (channel not
+  // connected, or no YouTube keys at all). Dev keeps the mock publish only
+  // when keys aren't configured, so the demo pipeline still flows end-to-end.
+  if (!realUpload && (env.isProd || (await isYoutubeConfiguredFor(userId)))) {
     await prisma.video.update({ where: { id: videoId }, data: { status: "ready" } }).catch(() => undefined);
     if (slotId) {
       await prisma.scheduleSlot

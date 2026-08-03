@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env";
 import { unauthorized } from "../lib/errors";
 import { prisma } from "../lib/prisma";
+import { runAsUser } from "../lib/providerKeys";
 import { DEMO_USER } from "@fable/shared";
 
 export interface AuthedUser {
@@ -43,7 +44,9 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
         const user = await prisma.user.findUnique({ where: { id: payload.sub } });
         if (user) {
           req.user = { id: user.id, email: user.email, name: user.name, plan: user.plan };
-          return next();
+          // Run the rest of the request inside the user's provider-key context
+          // so AI/TTS/YouTube call sites resolve their keys automatically.
+          return runAsUser(user.id, async () => next());
         }
       } catch {
         // fall through to bypass / 401
@@ -56,7 +59,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       }
       if (demoUserCache) {
         req.user = demoUserCache;
-        return next();
+        return runAsUser(demoUserCache.id, async () => next());
       }
     }
     next(unauthorized());

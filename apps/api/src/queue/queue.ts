@@ -4,6 +4,7 @@ import { clamp, safeJson } from "@fable/shared";
 import { env } from "../config/env";
 import { createLogger } from "../lib/logger";
 import { prisma } from "../lib/prisma";
+import { runAsUser } from "../lib/providerKeys";
 
 const log = createLogger("queue");
 
@@ -17,7 +18,24 @@ export type ProcessorFn = (payload: JobPayload) => Promise<void>;
 const processors = new Map<string, ProcessorFn>();
 
 export function registerProcessor(name: string, fn: ProcessorFn): void {
-  processors.set(name, fn);
+  // Every job runs inside the owning user's provider-key context (JobRecord
+  // stores userId at enqueue) so deep call sites — AI text, TTS, music,
+  // Whisper — resolve that user's keys automatically, env keys as fallback.
+  processors.set(name, async (payload) => {
+    let userId: string | null = null;
+    if (typeof payload.jobId === "string" && payload.jobId) {
+      try {
+        const record = await prisma.jobRecord.findUnique({
+          where: { id: payload.jobId },
+          select: { userId: true },
+        });
+        userId = record?.userId ?? null;
+      } catch {
+        /* best effort — fall back to env keys */
+      }
+    }
+    return runAsUser(userId, () => fn(payload));
+  });
 }
 
 export function getProcessor(name: string): ProcessorFn | undefined {

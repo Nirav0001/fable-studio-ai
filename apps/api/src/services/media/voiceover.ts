@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { VoiceConfig } from "@fable/shared";
 import { env } from "../../config/env";
 import { createLogger } from "../../lib/logger";
+import { activeKeys } from "../../lib/providerKeys";
 import { addUsage } from "../ai";
 
 const log = createLogger("voiceover");
@@ -54,7 +55,7 @@ async function synthOpenAi(line: string, voice: VoiceConfig, outPath: string): P
   const res = await fetch("https://api.openai.com/v1/audio/speech", {
     method: "POST",
     headers: {
-      authorization: `Bearer ${env.openaiKey}`,
+      authorization: `Bearer ${activeKeys().openaiKey}`,
       "content-type": "application/json",
     },
     body: JSON.stringify({
@@ -78,7 +79,7 @@ async function elRequest(line: string, voiceId: string): Promise<Response> {
   return fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
     method: "POST",
     headers: {
-      "xi-api-key": env.elevenlabsKey,
+      "xi-api-key": activeKeys().elevenlabsKey,
       "content-type": "application/json",
     },
     body: JSON.stringify({
@@ -197,7 +198,7 @@ export async function synthesizeVoiceover(
   const providers: { name: string; enabled: boolean; run: () => Promise<VoiceTrack[]> }[] = [
     {
       name: "elevenlabs",
-      enabled: Boolean(env.elevenlabsKey),
+      enabled: Boolean(activeKeys().elevenlabsKey),
       run: async () => {
         const out: VoiceTrack[] = [];
         for (let i = 0; i < usable.length; i++) {
@@ -210,7 +211,7 @@ export async function synthesizeVoiceover(
     },
     {
       name: "openai",
-      enabled: Boolean(env.openaiKey),
+      enabled: Boolean(activeKeys().openaiKey),
       run: async () => {
         const out: VoiceTrack[] = [];
         for (let i = 0; i < usable.length; i++) {

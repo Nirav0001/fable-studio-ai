@@ -33,17 +33,29 @@ function ChannelsView() {
     queryFn: () => api.get<ChannelSummary[]>("/channels"),
   });
 
-  // OAuth callback lands back here with ?connected=1 — celebrate once, then clean the URL.
+  // OAuth callback lands back here with ?connected=1 (or 0 + optional error).
+  // Announce the outcome once, then clean the URL.
   const connectedHandled = useRef(false);
   const connectedFlag = searchParams.get("connected");
+  const oauthError = searchParams.get("error");
   useEffect(() => {
-    if (connectedFlag === "1" && !connectedHandled.current) {
-      connectedHandled.current = true;
+    if (!connectedFlag || connectedHandled.current) return;
+    connectedHandled.current = true;
+    if (connectedFlag === "1") {
       toast.success("Channel connected");
       qc.invalidateQueries({ queryKey: ["channels"] });
-      router.replace("/channels");
+    } else {
+      toast.error("YouTube connection didn't complete", {
+        description:
+          oauthError === "access_denied"
+            ? "Google access was declined — hit Connect to try again."
+            : oauthError
+              ? `Google said: ${oauthError}. Check your YouTube keys in Settings → Provider keys, then retry.`
+              : "Check your YouTube keys in Settings → Provider keys (and the Google redirect URI), then retry.",
+      });
     }
-  }, [connectedFlag, qc, router]);
+    router.replace("/channels");
+  }, [connectedFlag, oauthError, qc, router]);
 
   const list = channels ?? [];
 

@@ -1,5 +1,5 @@
-import { env } from "../../config/env";
 import { resolveAiProvider } from "../../lib/capabilities";
+import { activeKeys } from "../../lib/providerKeys";
 import { createLogger } from "../../lib/logger";
 
 const log = createLogger("ai");
@@ -104,7 +104,7 @@ async function completeOpenAi(
 ): Promise<string> {
   const data = (await postJson(
     "https://api.openai.com/v1/chat/completions",
-    { authorization: `Bearer ${env.openaiKey}` },
+    { authorization: `Bearer ${activeKeys().openaiKey}` },
     {
       model: "gpt-4o-mini",
       max_tokens: maxTokens,
@@ -128,7 +128,7 @@ async function completeAnthropic(
 ): Promise<string> {
   const data = (await postJson(
     "https://api.anthropic.com/v1/messages",
-    { "x-api-key": env.anthropicKey, "anthropic-version": "2023-06-01" },
+    { "x-api-key": activeKeys().anthropicKey, "anthropic-version": "2023-06-01" },
     {
       model: "claude-sonnet-4-5",
       max_tokens: maxTokens,
@@ -150,8 +150,10 @@ async function completeGemini(
   maxTokens: number,
   json: boolean,
 ): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${env.geminiKey}`;
-  const data = (await postJson(url, {}, {
+  // Key travels in a header, never the URL — query strings leak into proxy/
+  // access logs; headers don't.
+  const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+  const data = (await postJson(url, { "x-goog-api-key": activeKeys().geminiKey }, {
     ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: {

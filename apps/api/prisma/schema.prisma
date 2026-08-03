@@ -30,6 +30,23 @@ model User {
   templates     Template[]
   notifications Notification[]
   apiKeys       ApiKey[]
+  providerCredential ProviderCredential?
+}
+
+// Per-user provider API keys (OpenAI, ElevenLabs, YouTube OAuth client…).
+// Values are encrypted at rest (AES-256-GCM via lib/secretbox) — never stored
+// or returned in plaintext. Empty string = not set; env vars are the fallback.
+model ProviderCredential {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  openaiKey      String   @default("")
+  anthropicKey   String   @default("")
+  geminiKey      String   @default("")
+  elevenlabsKey  String   @default("")
+  ytClientId     String   @default("")
+  ytClientSecret String   @default("")
+  updatedAt      DateTime @updatedAt
 }
 
 model ApiKey {

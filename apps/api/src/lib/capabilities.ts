@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { env } from "../config/env";
+import { activeKeys } from "./providerKeys";
 import type { AiProviderName } from "@fable/shared";
 
 function binaryExists(cmd: string): Promise<boolean> {
@@ -27,8 +28,11 @@ export async function hasYtdlp(): Promise<boolean> {
 
 export function resolveAiProvider(): AiProviderName {
   if (env.aiProvider !== "auto") return env.aiProvider;
-  if (env.openaiKey) return "openai";
-  if (env.anthropicKey) return "anthropic";
-  if (env.geminiKey) return "gemini";
+  // Per-user keys (Settings) take precedence via the active key context;
+  // outside a user context this falls back to the server env keys.
+  const keys = activeKeys();
+  if (keys.openaiKey) return "openai";
+  if (keys.anthropicKey) return "anthropic";
+  if (keys.geminiKey) return "gemini";
   return "mock";
 }

@@ -6,9 +6,10 @@ import type {
   WeeklySchedule,
 } from "@fable/shared";
 import { DEFAULT_WEEKLY_SCHEDULE, VOICE_PRESETS, safeJson } from "@fable/shared";
-import { badRequest, notFound } from "../../lib/errors";
+import { env } from "../../config/env";
+import { AppError, badRequest, notFound } from "../../lib/errors";
 import { prisma } from "../../lib/prisma";
-import { exchangeCode, fetchMyChannel, getAuthUrl, isYoutubeConfigured } from "../../services/youtube";
+import { exchangeCode, fetchMyChannel, getAuthUrl, isYoutubeConfiguredFor } from "../../services/youtube";
 import { toUpcomingSlot } from "../schedule/schedule.service";
 import { toVideoSummary } from "../videos/videos.service";
 
@@ -299,16 +300,28 @@ async function markMockConnected(channelId: string): Promise<void> {
 }
 
 /**
- * Real mode (YT keys present): returns the Google consent URL — the browser
- * completes the flow and Google redirects back to the oauth callback route.
- * Mock mode: connects immediately with a mock marker in youtubeJson.
+ * Real mode (user has YT OAuth keys — own or server env): returns the Google
+ * consent URL — the browser completes the flow and Google redirects back to
+ * the oauth callback route.
+ *
+ * Without keys: NEVER fake a connection in production — the user is pointed
+ * at Settings → API keys instead. Dev keeps the instant mock connect so the
+ * product stays explorable with zero setup.
  */
 export async function connectChannel(userId: string, channelId: string) {
   const channel = await getOwnedChannel(userId, channelId);
 
-  const authUrl = getAuthUrl(channel.id, userId);
+  const authUrl = await getAuthUrl(channel.id, userId);
   if (authUrl) {
     return { authUrl, connected: channel.connected };
+  }
+
+  if (env.isProd) {
+    throw new AppError(
+      "YouTube isn't configured yet — add your YouTube Client ID and Client Secret in Settings → API keys, then try connecting again.",
+      400,
+      "YT_KEYS_MISSING",
+    );
   }
 
   await markMockConnected(channel.id);
@@ -341,12 +354,16 @@ export async function completeOAuthCallback(
   const channel = await prisma.channel.findFirst({ where: { id: channelId, userId: stateUserId } });
   if (!channel) throw notFound("Channel");
 
-  if (!isYoutubeConfigured() || !code) {
-    await markMockConnected(channel.id);
-    return;
+  const configured = await isYoutubeConfiguredFor(stateUserId);
+  if (!configured || !code) {
+    if (!env.isProd) {
+      await markMockConnected(channel.id);
+      return;
+    }
+    throw badRequest("YouTube OAuth could not complete — API keys are missing");
   }
 
-  const tokens = await exchangeCode(code);
+  const tokens = await exchangeCode(code, stateUserId);
   // Google only returns refresh_token on first consent — keep the stored one otherwise.
   const previous = safeJson<StoredYoutube>(channel.youtubeJson, {});
   const stored: StoredYoutube = {

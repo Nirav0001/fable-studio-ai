@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ProfileSection, type SettingsUser } from "@/components/features/settings/profile-section";
 import { IntegrationsMatrix } from "@/components/features/settings/integrations-matrix";
 import { ApiKeysSection, type ApiKeyT } from "@/components/features/settings/api-keys-section";
+import { ProviderKeysSection } from "@/components/features/settings/provider-keys-section";
 import { NotificationPrefs } from "@/components/features/settings/notification-prefs";
 import { DangerZone } from "@/components/features/settings/danger-zone";
 
@@ -78,6 +79,14 @@ export default function SettingsPage() {
 
           <Section
             index={1}
+            title="Provider keys"
+            description="Bring your own OpenAI, ElevenLabs and YouTube keys — stored encrypted, used for everything your channels generate."
+          >
+            <ProviderKeysSection />
+          </Section>
+
+          <Section
+            index={2}
             title="Integrations"
             description="Live capability matrix — green is real, amber runs on the built-in mock or fallback."
           >
@@ -85,7 +94,7 @@ export default function SettingsPage() {
           </Section>
 
           <Section
-            index={2}
+            index={3}
             title="API keys"
             description="Programmatic access for scripts, Zapier and custom tooling."
           >
@@ -93,14 +102,14 @@ export default function SettingsPage() {
           </Section>
 
           <Section
-            index={3}
+            index={4}
             title="Notifications"
             description="What lands in your notification tray (and Discord, if enabled)."
           >
             <NotificationPrefs preferences={data.preferences} />
           </Section>
 
-          <Section index={4} title="Danger zone" description="Careful past this point.">
+          <Section index={5} title="Danger zone" description="Careful past this point.">
             <DangerZone />
           </Section>
         </>

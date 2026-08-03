@@ -9,6 +9,12 @@ const log = createLogger("music");
  * One-time peaceful music bed for WYR renders, generated through the
  * ElevenLabs sound-generation API and cached forever in storage/music.
  * Returns null when unavailable — the renderer then uses its synthesized pad.
+ *
+ * This is a SHARED server-wide asset, so it is generated with the server env
+ * key only — never a user's personal key (they shouldn't be billed for an
+ * asset every tenant's renders reuse). A miss is not cached: if no env key is
+ * set the next render simply re-checks (the disk lookup short-circuits once
+ * the bed exists).
  */
 let bedPromise: Promise<string | null> | null = null;
 
@@ -46,7 +52,11 @@ export function ensureMusicBed(): Promise<string | null> {
         log.warn(`Music bed unavailable — using synthesized pad: ${err instanceof Error ? err.message : String(err)}`);
         return null;
       }
-    })();
+    })().then((result) => {
+      // Don't memoize a miss — allow a later render to retry.
+      if (!result) bedPromise = null;
+      return result;
+    });
   }
   return bedPromise;
 }
