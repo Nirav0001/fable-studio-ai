@@ -1,0 +1,28 @@
+{
+  "name": "@fable/video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fable Studio AI — Remotion compositions for broadcast-quality Shorts (optional render path, standalone workspace)",
+  "scripts": {
+    "dev": "remotion studio",
+    "studio": "remotion studio",
+    "render": "remotion render",
+    "compositions": "remotion compositions",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.220",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.220",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "typescript": "5.6.3"
+  },
+  "engines": {
+    "node": ">=18.17"
+  }
+}

@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Fable Studio — dark-only glass theme ─────────────────────────────────── */
+@layer base {
+  :root {
+    --background: 258 36% 4%;
+    --foreground: 260 25% 96%;
+    --card: 258 30% 7%;
+    --card-foreground: 260 25% 96%;
+    --popover: 258 32% 6%;
+    --popover-foreground: 260 25% 96%;
+    --primary: 263 84% 66%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 258 25% 12%;
+    --secondary-foreground: 260 25% 92%;
+    --muted: 258 22% 13%;
+    --muted-foreground: 258 12% 62%;
+    --accent: 263 45% 18%;
+    --accent-foreground: 263 90% 85%;
+    --destructive: 0 72% 62%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 258 25% 15%;
+    --input: 258 25% 15%;
+    --ring: 263 84% 66%;
+    --radius: 1rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 20% -10%, hsl(263 84% 40% / 0.22), transparent),
+      radial-gradient(ellipse 60% 40% at 90% 0%, hsl(290 80% 45% / 0.12), transparent),
+      radial-gradient(ellipse 50% 60% at 60% 110%, hsl(240 90% 40% / 0.1), transparent);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(258 25% 20%);
+    border-radius: 9999px;
+    border: 2px solid hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(263 40% 35%);
+  }
+}
+
+@layer utilities {
+  /* Frosted glass panel */
+  .glass {
+    background: linear-gradient(160deg, hsl(258 40% 14% / 0.55), hsl(258 40% 8% / 0.45));
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid hsl(263 60% 60% / 0.12);
+    box-shadow:
+      0 1px 0 hsl(263 80% 80% / 0.06) inset,
+      0 8px 32px hsl(258 60% 2% / 0.5);
+  }
+
+  .glass-hover {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .glass-hover:hover {
+    border-color: hsl(263 70% 65% / 0.3);
+    box-shadow:
+      0 1px 0 hsl(263 80% 80% / 0.08) inset,
+      0 12px 40px hsl(263 60% 20% / 0.35);
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(92deg, #c4b5fd 0%, #a78bfa 35%, #e879f9 100%);
+  }
+
+  .gradient-primary {
+    background-image: linear-gradient(135deg, #7c3aed 0%, #a855f7 55%, #d946ef 100%);
+  }
+
+  .gradient-border {
+    position: relative;
+    background-clip: padding-box;
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 24px hsl(263 84% 66% / 0.35);
+  }
+
+  .skeleton {
+    @apply animate-pulse rounded-lg bg-muted/60;
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(258 25% 13%) 0%,
+      hsl(258 30% 18%) 40%,
+      hsl(258 25% 13%) 80%
+    );
+    background-size: 400px 100%;
+    @apply animate-shimmer;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

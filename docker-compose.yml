@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fable-postgres
+    environment:
+      POSTGRES_USER: fable
+      POSTGRES_PASSWORD: fable
+      POSTGRES_DB: fable_studio
+    ports:
+      - "5433:5432"
+    volumes:
+      - fable_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fable"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: fable-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - fable_redis:/data
+
+volumes:
+  fable_pg:
+  fable_redis:

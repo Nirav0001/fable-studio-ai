@@ -1,0 +1,20 @@
+node_modules/
+.next/
+dist/
+build/
+*.tsbuildinfo
+.env
+.env.local
+apps/api/.env
+apps/api/prisma/*.db
+apps/api/prisma/*.db-journal
+# All generated/downloaded media stays local (renders, source downloads,
+# emoji + music caches, uploaded assets) — only the folder markers ship.
+storage/**
+!storage/
+!storage/*/
+!storage/**/.gitkeep
+.DS_Store
+Thumbs.db
+coverage/
+.turbo/

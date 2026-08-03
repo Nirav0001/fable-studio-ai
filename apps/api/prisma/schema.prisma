@@ -1,0 +1,280 @@
+// Fable Studio AI — database schema
+// Dev default is SQLite (zero setup). For PostgreSQL run `npm run db:use:postgres`
+// which swaps this provider line and points DATABASE_URL at docker-compose.
+// All *Json columns hold serialized JSON strings (portable across both providers);
+// services (de)serialize through zod-validated helpers.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  passwordHash     String
+  name             String
+  plan             String   @default("studio") // starter | studio | agency
+  planStatus       String   @default("active")
+  planRenewsAt     DateTime?
+  stripeCustomerId String?
+  preferencesJson  String   @default("{}")
+  createdAt        DateTime @default(now())
+
+  channels      Channel[]
+  assets        Asset[]
+  templates     Template[]
+  notifications Notification[]
+  apiKeys       ApiKey[]
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  prefix     String
+  keyHash    String
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+model Channel {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String
+  handle             String
+  type               String // wyr | clips | top5
+  description        String   @default("")
+  avatarColor        String   @default("#8b5cf6")
+  subscriberCount    Int      @default(0)
+  connected          Boolean  @default(false)
+  brandingJson       String   @default("{}")
+  uploadDefaultsJson String   @default("{}")
+  scheduleJson       String   @default("{}") // WeeklySchedule
+  promptsJson        String   @default("{}") // per-channel AI prompt overrides
+  youtubeJson        String   @default("{}") // oauth tokens / mock flag
+  createdAt          DateTime @default(now())
+
+  projects     Project[]
+  videos       Video[]
+  slots        ScheduleSlot[]
+  snapshots    AnalyticsSnapshot[]
+  wyrQuestions WyrQuestion[]
+  automation   AutomationRule?
+}
+
+model Project {
+  id            String   @id @default(cuid())
+  channelId     String
+  channel       Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  type          String // wyr | clips | top5
+  title         String
+  status        String   @default("draft") // draft|generating|review|rendering|ready|failed
+  stage         String   @default("idle")
+  progress      Int      @default(0)
+  error         String?
+  sourceUrl     String?
+  configJson    String   @default("{}")
+  scriptJson    String   @default("{}") // ScriptPlan
+  seoJson       String   @default("{}") // SeoPack
+  thumbnailJson String   @default("[]") // ThumbnailVariant[]
+  viralJson     String   @default("{}") // ViralScore
+  costJson      String   @default("{}") // CostEstimate
+  transcriptJson String  @default("[]") // TranscriptSegment[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  clips  Clip[]
+  videos Video[]
+}
+
+model WyrQuestion {
+  id         String    @id @default(cuid())
+  channelId  String?
+  channel    Channel?  @relation(fields: [channelId], references: [id], onDelete: SetNull)
+  theme      String
+  difficulty String
+  optionA    String
+  optionB    String
+  percentA   Int       @default(50)
+  factoid    String    @default("")
+  hash       String    @unique
+  usedAt     DateTime?
+  projectId  String?
+  createdAt  DateTime  @default(now())
+
+  @@index([theme, difficulty])
+}
+
+model Clip {
+  id           String  @id @default(cuid())
+  projectId    String
+  project      Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  index        Int
+  title        String
+  hook         String  @default("")
+  startSec     Float
+  endSec       Float
+  score        Int     @default(0)
+  scoreJson    String  @default("{}") // ScoreBreakdown
+  transcript   String  @default("")
+  status       String  @default("candidate") // candidate | kept | discarded
+  editPlanJson String  @default("{}") // EditPlan
+}
+
+model Video {
+  id            String    @id @default(cuid())
+  channelId     String
+  channel       Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  projectId     String?
+  project       Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  clipId        String?
+  title         String
+  description   String    @default("")
+  tagsJson      String    @default("[]")
+  hashtagsJson  String    @default("[]")
+  filePath      String?
+  thumbnailPath String?
+  durationSec   Float     @default(0)
+  status        String    @default("draft")
+  visibility    String    @default("public")
+  viralScore    Int       @default(0)
+  youtubeId     String?
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  stats  VideoStat[]
+  slot   ScheduleSlot?
+  abTests AbTest[]
+}
+
+model ScheduleSlot {
+  id          String   @id @default(cuid())
+  channelId   String
+  channel     Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  videoId     String?  @unique
+  video       Video?   @relation(fields: [videoId], references: [id], onDelete: SetNull)
+  scheduledAt DateTime
+  status      String   @default("scheduled")
+  attempts    Int      @default(0)
+  lastError   String?
+  createdAt   DateTime @default(now())
+
+  @@index([channelId, scheduledAt])
+}
+
+model AnalyticsSnapshot {
+  id           String   @id @default(cuid())
+  channelId    String
+  channel      Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  date         DateTime
+  views        Int      @default(0)
+  watchMinutes Int      @default(0)
+  subsGained   Int      @default(0)
+  revenueGbp   Float    @default(0)
+  ctr          Float    @default(0)
+  avgViewSec   Float    @default(0)
+  retention    Float    @default(0)
+  uploads      Int      @default(0)
+
+  @@unique([channelId, date])
+}
+
+model VideoStat {
+  id        String   @id @default(cuid())
+  videoId   String
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  date      DateTime
+  views     Int      @default(0)
+  likes     Int      @default(0)
+  comments  Int      @default(0)
+  shares    Int      @default(0)
+  ctr       Float    @default(0)
+  avgPct    Float    @default(0)
+  curveJson String   @default("[]") // retention curve points [{pct, value}]
+
+  @@unique([videoId, date])
+}
+
+model Asset {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind        String // video|music|sfx|gif|logo|font|voiceover|thumbnail
+  name        String
+  filePath    String
+  url         String?
+  sizeBytes   Int      @default(0)
+  durationSec Float?
+  metaJson    String   @default("{}")
+  createdAt   DateTime @default(now())
+}
+
+model Template {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  kind        String // wyr | clips | top5 | caption | thumbnail
+  description String   @default("")
+  configJson  String   @default("{}")
+  accent      String   @default("#8b5cf6")
+  builtIn     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String // render.done | upload.done | upload.failed | trend | billing | system
+  title     String
+  body      String   @default("")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model JobRecord {
+  id         String    @id @default(cuid())
+  queue      String
+  name       String
+  userId     String? // owner — set at enqueue for per-tenant job scoping
+  refType    String // project | video | channel | system
+  refId      String
+  status     String    @default("queued") // queued|active|completed|failed
+  progress   Int       @default(0)
+  message    String    @default("")
+  logsJson   String    @default("[]")
+  startedAt  DateTime?
+  finishedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([refType, refId])
+}
+
+model AbTest {
+  id           String   @id @default(cuid())
+  videoId      String
+  video        Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  kind         String // thumbnail | title
+  variantsJson String   @default("[]")
+  status       String   @default("running") // running | decided
+  winnerIdx    Int?
+  createdAt    DateTime @default(now())
+}
+
+model AutomationRule {
+  id         String    @id @default(cuid())
+  channelId  String    @unique
+  channel    Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  enabled    Boolean   @default(false)
+  configJson String    @default("{}") // { videosPerDay, autoApprove, minViralScore, themeRotation }
+  lastRunAt  DateTime?
+  createdAt  DateTime  @default(now())
+}
