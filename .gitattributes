@@ -1,0 +1,5 @@
+# Scripts that run inside the Linux container MUST keep LF endings, or the
+# shell fails with "bad interpreter". Force it regardless of core.autocrlf.
+*.sh text eol=lf
+Dockerfile text eol=lf
+docker-start.sh text eol=lf
