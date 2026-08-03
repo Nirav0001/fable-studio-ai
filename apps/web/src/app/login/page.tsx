@@ -10,24 +10,44 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+type Mode = "login" | "register";
+
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("demo@fablestudio.ai");
-  const [password, setPassword] = useState("fable-demo-2026");
+  const [mode, setMode] = useState<Mode>("login");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const isRegister = mode === "register";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (isRegister && password.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
     setLoading(true);
     try {
-      await api.post("/auth/login", { email, password });
-      toast.success("Welcome back");
+      if (isRegister) {
+        await api.post("/auth/register", { name, email, password });
+        toast.success("Account created — welcome to the studio");
+      } else {
+        await api.post("/auth/login", { email, password });
+        toast.success("Welcome back");
+      }
       router.push("/dashboard");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "Login failed");
+      toast.error(err instanceof ApiError ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
+  }
+
+  function switchMode() {
+    setMode((m) => (m === "login" ? "register" : "login"));
+    setPassword("");
   }
 
   return (
@@ -46,18 +66,36 @@ export default function LoginPage() {
             Fable Studio <span className="gradient-text">AI</span>
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
-            Your faceless Shorts empire, on autopilot.
+            {isRegister
+              ? "Create your account to start building."
+              : "Your faceless Shorts empire, on autopilot."}
           </p>
         </div>
 
         <form onSubmit={submit} className="space-y-4">
+          {isRegister && (
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                type="text"
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your name"
+                required
+              />
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
               required
             />
           </div>
@@ -66,20 +104,29 @@ export default function LoginPage() {
             <Input
               id="password"
               type="password"
+              autoComplete={isRegister ? "new-password" : "current-password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder={isRegister ? "At least 8 characters" : "••••••••"}
+              minLength={isRegister ? 8 : undefined}
               required
             />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Sign in
+            {isRegister ? "Create account" : "Sign in"}
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          Demo workspace: <span className="text-foreground">demo@fablestudio.ai</span> ·{" "}
-          <span className="text-foreground">fable-demo-2026</span>
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          {isRegister ? "Already have an account?" : "New to Fable Studio?"}{" "}
+          <button
+            type="button"
+            onClick={switchMode}
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            {isRegister ? "Sign in" : "Create an account"}
+          </button>
         </p>
       </motion.div>
     </div>
