@@ -46,9 +46,15 @@ function decodesCleanly(path: string): Promise<boolean> {
   return new Promise((resolve) => {
     execFile(
       env.ffmpegPath,
-      ["-v", "error", "-xerror", "-i", path, "-f", "null", "-"],
+      // NO -xerror, and stderr is not treated as failure. OpenAI's TTS WAVs
+      // end with a packet ffmpeg reports as "corrupt input packet in stream 0"
+      // yet decode perfectly — -xerror promoted that warning to fatal and
+      // rejected every single clip. Only a non-zero exit means unplayable.
+      // -threads 1 keeps this cheap: the container reports 48 cores but caps
+      // total threads, and these run once per line.
+      ["-v", "error", "-threads", "1", "-i", path, "-f", "null", "-"],
       { timeout: 20_000 },
-      (err, _stdout, stderr) => resolve(!err && String(stderr).trim().length === 0),
+      (err) => resolve(!err),
     );
   });
 }
