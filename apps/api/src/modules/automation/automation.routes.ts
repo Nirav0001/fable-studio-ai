@@ -207,7 +207,10 @@ router.post(
           channelId: channel.id,
           type: channel.type,
           title: built.title,
-          status: "generating",
+          // "draft" until the batch worker actually starts it — a queued item
+          // isn't running, and this keeps it deletable (deleteProject refuses
+          // to remove a project that claims to be generating).
+          status: "draft",
           stage: BATCH_STAGE,
           progress: 0,
           sourceUrl: built.sourceUrl,
