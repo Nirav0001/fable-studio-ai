@@ -334,16 +334,26 @@ async function renderFiltersToVideo(
   const ticks = av.tickWindows ?? [];
   const whooshes = av.whooshTimes ?? [];
 
+  // A WYR render opens ~35 simultaneous inputs (canvas, music, ~16 emoji
+  // stills, voice lines, tick/whoosh generators, animated strips). FFmpeg's
+  // default per-input packet queue (8) overflows well before that, which
+  // surfaces as "Failed to inject frame into filter network: Resource
+  // temporarily unavailable" and a cascading "Error reinitializing filters!".
+  // Every input therefore gets a generous queue.
+  const QUEUE = ["-thread_queue_size", "1024"];
+
   const args: string[] = [
     "-y",
+    ...QUEUE,
     "-f", "lavfi", "-i", `color=c=${bgColor}:s=${W}x${H}:r=${FPS}:d=${d}`,
   ];
   // Input 1 — music bed: real file (looped) or a synthesized peaceful pad
   // (soft A-major triad with a slow breathing LFO).
   if (av.musicPath) {
-    args.push("-stream_loop", "-1", "-i", av.musicPath);
+    args.push(...QUEUE, "-stream_loop", "-1", "-i", av.musicPath);
   } else {
     args.push(
+      ...QUEUE,
       "-f", "lavfi",
       "-i",
       `aevalsrc='0.055*(sin(2*PI*220*t)+0.8*sin(2*PI*277.2*t)+0.65*sin(2*PI*329.6*t))*(0.75+0.25*sin(2*PI*0.11*t))':s=44100:d=${d}`,
@@ -355,14 +365,14 @@ async function renderFiltersToVideo(
   for (const img of images) {
     // Stills at 1fps — overlay holds the frame, and this avoids re-decoding
     // each PNG 30×/second for the whole render.
-    args.push("-loop", "1", "-framerate", "1", "-i", img.path);
+    args.push(...QUEUE, "-loop", "1", "-framerate", "1", "-i", img.path);
     nextInput++;
   }
   const voiceBase = nextInput;
   for (const track of voice) {
     // discardcorrupt: drop a damaged packet rather than aborting the whole
     // render. Tracks are decode-verified upstream; this is the safety net.
-    args.push("-fflags", "+discardcorrupt", "-i", track.path);
+    args.push(...QUEUE, "-fflags", "+discardcorrupt", "-i", track.path);
     nextInput++;
   }
   let tickIdx = -1;
@@ -370,6 +380,7 @@ async function renderFiltersToVideo(
     // One decaying 1.05kHz blip per second, gated to the question windows.
     const gate = ticks.map((w) => `between(t\\,${fmt(w.start)}\\,${fmt(w.end)})`).join("+");
     args.push(
+      ...QUEUE,
       "-f", "lavfi",
       "-i", `aevalsrc='0.45*sin(2*PI*1050*t)*exp(-30*mod(t\\,1))*(${gate})':s=44100:d=${d}`,
     );
@@ -377,12 +388,12 @@ async function renderFiltersToVideo(
   }
   let whooshIdx = -1;
   if (whooshes.length > 0) {
-    args.push("-f", "lavfi", "-i", `anoisesrc=c=white:r=44100:a=0.8:d=${d}`);
+    args.push(...QUEUE, "-f", "lavfi", "-i", `anoisesrc=c=white:r=44100:a=0.8:d=${d}`);
     whooshIdx = nextInput++;
   }
   const stripBase = nextInput;
   for (const s of strips) {
-    args.push("-f", "lavfi", "-i", `color=c=${s.color}:s=${s.w}x${s.h}:r=2:d=${d}`);
+    args.push(...QUEUE, "-f", "lavfi", "-i", `color=c=${s.color}:s=${s.w}x${s.h}:r=2:d=${d}`);
     nextInput++;
   }
 
@@ -393,13 +404,16 @@ async function renderFiltersToVideo(
   let cursor = "base0";
   images.forEach((img, i) => {
     const next = `base${i + 1}`;
+    // -2 (not -1) keeps the derived height EVEN and setsar=1 pins a square
+    // pixel aspect — odd/─mismatched geometry makes scale fail to configure
+    // its output pad when the graph is reinitialized.
     if (img.spin) {
       // Pendulum wobble: pad for corner room, rotate ±15° at ~2.5Hz.
       graph.push(
-        `[${imageBase + i}:v]scale=${img.width}:-1,fps=${FPS},format=rgba,pad=iw+60:ih+60:30:30:color=0x00000000,rotate=a='0.26*sin(5*PI*t)':fillcolor=none[img${i}]`,
+        `[${imageBase + i}:v]scale=${img.width}:-2,setsar=1,fps=${FPS},format=rgba,pad=iw+60:ih+60:30:30:color=0x00000000,rotate=a='0.26*sin(5*PI*t)':fillcolor=none[img${i}]`,
       );
     } else {
-      graph.push(`[${imageBase + i}:v]scale=${img.width}:-1[img${i}]`);
+      graph.push(`[${imageBase + i}:v]scale=${img.width}:-2,setsar=1,format=rgba[img${i}]`);
     }
     const yExpr = img.dropIn ? `${img.y}-48*exp(-10*max(0\\,t-${fmt(img.start)}))` : String(img.y);
     const enable = img.enableExpr ?? `between(t,${fmt(img.start)},${fmt(img.end)})`;
@@ -450,6 +464,7 @@ async function renderFiltersToVideo(
 
   const scriptPath = `${outPath}.filtergraph.txt`;
   writeFileSync(scriptPath, graph.join(";\n"), "utf8");
+  const cmdPath = `${outPath}.cmd.txt`;
 
   args.push(
     "-filter_complex_script", scriptPath,
@@ -466,13 +481,16 @@ async function renderFiltersToVideo(
     "-t", d,
     outPath,
   );
-  // Delete the filtergraph only on SUCCESS — on failure it stays next to the
-  // output as the primary debugging artifact for what ffmpeg was actually fed.
+  // On failure the filtergraph AND the exact argv stay next to the output —
+  // together they reproduce the run verbatim. Both are removed on success.
+  writeFileSync(cmdPath, args.map((a) => (/[\s'"]/.test(a) ? `'${a}'` : a)).join(" "), "utf8");
   await runFfmpeg(args, label);
-  try {
-    unlinkSync(scriptPath);
-  } catch {
-    /* best effort */
+  for (const p of [scriptPath, cmdPath]) {
+    try {
+      unlinkSync(p);
+    } catch {
+      /* best effort */
+    }
   }
 }
 
