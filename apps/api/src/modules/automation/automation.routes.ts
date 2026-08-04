@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { QUEUE_JOBS, WYR_THEMES, fnv1a, pick, safeJson, seededRandom } from "@fable/shared";
 import type { ClipsConfig, Top5Config, WyrConfig } from "@fable/shared";
+import { BATCH_STAGE } from "../../lib/batch";
 import { badRequest, notFound } from "../../lib/errors";
 import { createLogger } from "../../lib/logger";
 import { prisma } from "../../lib/prisma";
@@ -113,6 +114,111 @@ router.patch(
       config: mergedConfig,
       lastRunAt: rule.lastRunAt?.toISOString() ?? null,
     });
+  }),
+);
+
+interface BuiltProject {
+  title: string;
+  configJson: string;
+  sourceUrl: string | null;
+}
+
+/**
+ * Build one automation project's title + config. `variant` seeds the theme
+ * rotation so a batch of N spreads across themes instead of repeating one.
+ */
+function buildAutomationProject(
+  channel: { id: string; type: string },
+  config: AutomationConfig,
+  variant: number,
+): BuiltProject {
+  const now = new Date();
+  const dayOfYear = Math.floor(
+    (now.getTime() - new Date(now.getFullYear(), 0, 0).getTime()) / 86_400_000,
+  );
+  const dateLabel = now.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+
+  if (channel.type === "wyr") {
+    const rand = seededRandom(fnv1a(`${channel.id}:wyr:${now.getFullYear()}:${dayOfYear}:${variant}`));
+    const pool = config.themeRotation.length > 0 ? config.themeRotation : [...WYR_THEMES];
+    const theme = pick(rand, pool);
+    const wyr: WyrConfig = { difficulty: "medium", theme, lengthSec: 30, questionCount: 5 };
+    return {
+      title: `Would You Rather: ${capitalize(theme)} Edition`,
+      configJson: JSON.stringify(wyr),
+      sourceUrl: null,
+    };
+  }
+  if (channel.type === "clips") {
+    const sourceUrl = config.sourceUrl ?? DEFAULT_DEMO_SOURCE;
+    const clips: ClipsConfig = {
+      sourceUrl,
+      clipCount: 10,
+      minScore: Math.round(config.minViralScore),
+      captionStyle: "beast",
+      addMemes: true,
+    };
+    return { title: `Auto Clips — ${dateLabel}`, configJson: JSON.stringify(clips), sourceUrl };
+  }
+  if (channel.type === "top5") {
+    const sourceUrl = config.sourceUrl ?? DEFAULT_DEMO_SOURCE;
+    const top5: Top5Config = { sourceUrl, countdownFrom: 5, captionStyle: "beast" };
+    return {
+      title: `Top 5 Funniest Moments — ${dateLabel}`,
+      configJson: JSON.stringify(top5),
+      sourceUrl,
+    };
+  }
+  throw badRequest(`Channel type "${channel.type}" does not support automation`);
+}
+
+const bulkSchema = z.object({ count: z.number().int().min(1).max(100) });
+
+/**
+ * POST /automation/bulk/:channelId — queue N projects for this channel.
+ *
+ * Projects are created parked at BATCH_STAGE; the batch worker releases them
+ * ONE AT A TIME. Rendering is extremely resource-hungry (a WYR render opens
+ * ~35 ffmpeg inputs), so firing a batch off in parallel would exhaust the
+ * container's thread budget and fail every render.
+ */
+router.post(
+  "/bulk/:channelId",
+  validateBody(bulkSchema),
+  handler(async (req, res) => {
+    const channel = await prisma.channel.findFirst({
+      where: { id: req.params.channelId, userId: req.user!.id },
+    });
+    if (!channel) throw notFound("Channel");
+
+    const { count } = req.body as z.infer<typeof bulkSchema>;
+    const rule = await prisma.automationRule.findUnique({ where: { channelId: channel.id } });
+    const config = resolveConfig(rule?.configJson);
+
+    const alreadyQueued = await prisma.project.count({
+      where: { channelId: channel.id, stage: BATCH_STAGE },
+    });
+
+    let created = 0;
+    for (let i = 0; i < count; i++) {
+      const built = buildAutomationProject(channel, config, alreadyQueued + i);
+      await prisma.project.create({
+        data: {
+          channelId: channel.id,
+          type: channel.type,
+          title: built.title,
+          status: "generating",
+          stage: BATCH_STAGE,
+          progress: 0,
+          sourceUrl: built.sourceUrl,
+          configJson: built.configJson,
+        },
+      });
+      created++;
+    }
+
+    log.info(`Batch queued ${created} project(s) for channel ${channel.name}`);
+    ok(res, { created, queued: alreadyQueued + created }, 201);
   }),
 );
 

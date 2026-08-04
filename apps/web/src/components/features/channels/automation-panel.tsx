@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
-import { Bot, CheckCircle2, Clock, Flame, Gauge, Loader2, Play } from "lucide-react";
+import { Bot, CheckCircle2, Clock, Flame, Gauge, Layers, Loader2, Play } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -63,6 +63,7 @@ function AutomationInner({
   const [videosPerDay, setVideosPerDay] = useState(rule?.config.videosPerDay ?? 3);
   const [minViralScore, setMinViralScore] = useState(rule?.config.minViralScore ?? 60);
   const [autoApprove, setAutoApprove] = useState(rule?.config.autoApprove ?? false);
+  const [batchCount, setBatchCount] = useState(25);
 
   const save = useMutation({
     mutationFn: (body: { enabled: boolean; config: AutomationConfig }) =>
@@ -91,6 +92,20 @@ function AutomationInner({
       },
     });
   };
+
+  const bulkRun = useMutation({
+    mutationFn: (count: number) =>
+      api.post<{ created: number; queued: number }>(`/automation/bulk/${channelId}`, { count }),
+    onSuccess: ({ created, queued }) => {
+      toast.success(`${created} video${created === 1 ? "" : "s"} queued`, {
+        description: `${queued} waiting in the batch — they render one at a time and schedule themselves.`,
+      });
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+    },
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Could not queue the batch"),
+  });
 
   const runNow = useMutation({
     mutationFn: () => api.post<{ projectId: string }>(`/automation/run/${channelId}`),
@@ -235,6 +250,41 @@ function AutomationInner({
           )}
           Run now
         </Button>
+      </section>
+
+      {/* Bulk batch */}
+      <section className="glass flex flex-wrap items-center justify-between gap-4 rounded-2xl p-5">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">Bulk generate</p>
+          <p className="max-w-lg text-xs text-muted-foreground">
+            Queues a batch and works through it one video at a time (roughly a minute each),
+            auto-scheduling every finished Short into your posting slots.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={1}
+            max={100}
+            value={batchCount}
+            onChange={(e) => setBatchCount(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+            aria-label="How many videos to queue"
+            className="h-9 w-20 rounded-xl border border-border bg-background px-3 text-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <Button
+            variant="secondary"
+            className="gap-2"
+            disabled={bulkRun.isPending}
+            onClick={() => bulkRun.mutate(batchCount)}
+          >
+            {bulkRun.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Layers className="h-4 w-4" />
+            )}
+            Queue batch
+          </Button>
+        </div>
       </section>
     </div>
   );

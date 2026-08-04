@@ -28,6 +28,7 @@ import {
   syncVideoStats,
 } from "../services/youtube";
 import type { JobPayload } from "./queue";
+import { BATCH_STAGE } from "../lib/batch";
 import { processGenerate } from "./processors/generate";
 import { processRender } from "./processors/render";
 import { processUpload } from "./processors/upload";
@@ -87,6 +88,9 @@ export async function startWorkers(): Promise<void> {
 
   const slotTimer = setInterval(() => void runSafely("slot-scan", scanDueSlots), 60_000);
   slotTimer.unref();
+  // Drains bulk-queued projects one at a time (see batchTick).
+  const batchTimer = setInterval(() => void runSafely("batch-tick", batchTick), 20_000);
+  batchTimer.unref();
   const automationTimer = setInterval(
     () => void runSafely("automation-tick", automationTick),
     5 * 60_000,
@@ -128,6 +132,46 @@ async function syncAllChannelStats(): Promise<void> {
       );
     }
   }
+}
+
+// ── Bulk batch drain (every 20s) ─────────────────────────────────────────────
+
+/**
+ * Release ONE bulk-queued project at a time.
+ *
+ * A single WYR render opens ~35 ffmpeg inputs; the container's cgroup caps
+ * total threads, so concurrent renders exhaust it and every one fails. Strict
+ * serialisation is therefore a correctness requirement, not a nicety: nothing
+ * new starts until the generate/render pipeline is idle.
+ */
+async function batchTick(): Promise<void> {
+  const busy = await prisma.jobRecord.count({
+    where: {
+      name: { in: [QUEUE_JOBS.PROJECT_GENERATE, QUEUE_JOBS.PROJECT_RENDER] },
+      status: { in: ["queued", "active"] },
+    },
+  });
+  if (busy > 0) return;
+
+  const next = await prisma.project.findFirst({
+    where: { stage: BATCH_STAGE },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!next) return;
+
+  // Claim it first so a concurrent tick can't release the same project twice.
+  const claimed = await prisma.project.updateMany({
+    where: { id: next.id, stage: BATCH_STAGE },
+    data: { stage: "queued", status: "generating" },
+  });
+  if (claimed.count !== 1) return;
+
+  await enqueue(QUEUE_JOBS.PROJECT_GENERATE, {
+    projectId: next.id,
+    channelId: next.channelId,
+  });
+  const remaining = await prisma.project.count({ where: { stage: BATCH_STAGE } });
+  log.info(`Batch: released project ${next.id} (${remaining} still queued)`);
 }
 
 // ── Due schedule slots → enqueue uploads (every 60s) ─────────────────────────

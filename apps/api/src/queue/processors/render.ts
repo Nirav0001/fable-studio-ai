@@ -474,7 +474,9 @@ export async function processRender(payload: JobPayload): Promise<void> {
       const cfg = safeJson<{ autoApprove?: boolean }>(rule.configJson, {});
       if (cfg.autoApprove) {
         try {
-          const { created } = await autoFill(userId, project.channelId, 7, createdVideoIds);
+          // 30-day horizon: a bulk batch can produce far more videos than a
+          // week of posting slots holds, and unscheduled ones would just sit.
+          const { created } = await autoFill(userId, project.channelId, 30, createdVideoIds);
           if (created > 0) {
             await notify(
               userId,
