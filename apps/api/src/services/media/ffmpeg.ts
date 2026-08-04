@@ -237,11 +237,36 @@ function progressBar(totalSec: number): string {
 
 // ── ffmpeg process runner ────────────────────────────────────────────────────
 
+/**
+ * Container CPU affinity for ffmpeg.
+ *
+ * A container commonly reports the HOST's core count (48 on Railway) while its
+ * cgroup caps total threads (pids.max = 1000). FFmpeg sizes its thread pools
+ * from the visible core count, so a WYR render — ~35 simultaneous inputs —
+ * asks for far more threads than the cgroup allows and dies at startup with
+ * "pthread_create failed: Resource temporarily unavailable", which surfaces
+ * downstream as decoder/filter-configuration errors.
+ *
+ * Pinning ffmpeg to a handful of cores makes av_cpu_count() report that many,
+ * which right-sizes every pool at once. Verified in production: the identical
+ * 35-input graph fails bare and succeeds under `taskset -c 0-3`.
+ */
+function ffmpegLauncher(args: string[]): { cmd: string; argv: string[] } {
+  if (process.platform === "linux") {
+    const taskset = ["/usr/bin/taskset", "/bin/taskset"].find((p) => existsSync(p));
+    if (taskset) {
+      return { cmd: taskset, argv: ["-c", "0-3", env.ffmpegPath, ...args] };
+    }
+  }
+  return { cmd: env.ffmpegPath, argv: args };
+}
+
 function runFfmpeg(args: string[], label: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const preview = args.join(" ");
     log.info(`${label}: ${env.ffmpegPath} ${preview.length > 260 ? `${preview.slice(0, 260)}…` : preview}`);
-    const child = spawn(env.ffmpegPath, args, { windowsHide: true, stdio: ["ignore", "ignore", "pipe"] });
+    const { cmd, argv } = ffmpegLauncher(args);
+    const child = spawn(cmd, argv, { windowsHide: true, stdio: ["ignore", "ignore", "pipe"] });
     let stderr = "";
     let timedOut = false;
     child.stderr.on("data", (chunk: Buffer) => {
