@@ -360,7 +360,9 @@ async function renderFiltersToVideo(
   }
   const voiceBase = nextInput;
   for (const track of voice) {
-    args.push("-i", track.path);
+    // discardcorrupt: drop a damaged packet rather than aborting the whole
+    // render. Tracks are decode-verified upstream; this is the safety net.
+    args.push("-fflags", "+discardcorrupt", "-i", track.path);
     nextInput++;
   }
   let tickIdx = -1;

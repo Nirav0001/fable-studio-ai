@@ -33,6 +33,26 @@ function probeDuration(path: string): Promise<number> {
   });
 }
 
+/**
+ * Fully decode a synthesized file to prove it is playable.
+ *
+ * A truncated TTS response often keeps a VALID header — ffprobe reports a
+ * duration from the bitrate, so a probe-only check passes — but decoding the
+ * data blows up mid-render and takes the whole filter graph with it
+ * ("Error while processing the decoded data for stream #N"). Decoding to null
+ * is the only check that catches it, and voice clips are short so it's cheap.
+ */
+function decodesCleanly(path: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    execFile(
+      env.ffmpegPath,
+      ["-v", "error", "-xerror", "-i", path, "-f", "null", "-"],
+      { timeout: 20_000 },
+      (err, _stdout, stderr) => resolve(!err && String(stderr).trim().length === 0),
+    );
+  });
+}
+
 const DEFAULT_VOICE: VoiceConfig = {
   provider: "mock",
   voiceId: "onyx-uk",
@@ -233,21 +253,22 @@ export async function synthesizeVoiceover(
     if (!provider.enabled) continue;
     try {
       const tracks = await provider.run();
-      await Promise.all(
+      // Probe AND decode-verify every file — a corrupt clip must never reach
+      // the render's filter graph, where it kills the entire video.
+      const checked = await Promise.all(
         tracks.map(async (t) => {
           t.durationSec = await probeDuration(t.path);
+          const ok = t.durationSec > 0.1 && (await decodesCleanly(t.path));
+          return { track: t, ok };
         }),
       );
-      // A file ffprobe can't read (truncated/empty TTS response) MUST NOT
-      // reach ffmpeg — one bad audio input crashes the whole filter graph
-      // ("Error while processing the decoded data for stream #N").
-      const good = tracks.filter((t) => t.durationSec > 0.1);
+      const good = checked.filter((c) => c.ok).map((c) => c.track);
       if (good.length === 0) {
-        throw new Error(`${provider.name} produced no playable audio (${tracks.length} unreadable files)`);
+        throw new Error(`${provider.name} produced no playable audio (${tracks.length} corrupt files)`);
       }
       if (good.length < tracks.length) {
         log.warn(
-          `Voiceover: dropped ${tracks.length - good.length} unreadable file(s) from ${provider.name}`,
+          `Voiceover: dropped ${tracks.length - good.length} corrupt file(s) from ${provider.name}`,
         );
       }
       log.info(`Voiceover: ${good.length}/${usable.length} lines via ${provider.name}`);
