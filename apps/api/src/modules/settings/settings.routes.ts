@@ -5,7 +5,8 @@ import { z } from "zod";
 import { safeJson } from "@fable/shared";
 import { env } from "../../config/env";
 import { hasFfmpeg, hasYtdlp, resolveAiProvider } from "../../lib/capabilities";
-import { notFound } from "../../lib/errors";
+import { badRequest, notFound } from "../../lib/errors";
+import { isDiscordWebhookUrl } from "../notifications/notify";
 import { prisma } from "../../lib/prisma";
 import { activeKeys, invalidateUserKeys } from "../../lib/providerKeys";
 import { handler, ok } from "../../lib/respond";
@@ -90,6 +91,19 @@ router.patch(
     const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
     if (!user) throw notFound("User");
     const body = req.body as z.infer<typeof patchSchema>;
+    // The Discord webhook preference is POSTed to later — only accept real
+    // Discord webhook endpoints (or "" to clear).
+    if (body.preferences && "discordWebhookUrl" in body.preferences) {
+      const raw = body.preferences.discordWebhookUrl;
+      if (typeof raw !== "string") throw badRequest("discordWebhookUrl must be a string");
+      const trimmed = raw.trim();
+      if (trimmed !== "" && !isDiscordWebhookUrl(trimmed)) {
+        throw badRequest(
+          "That doesn't look like a Discord webhook URL — it should start with https://discord.com/api/webhooks/",
+        );
+      }
+      body.preferences.discordWebhookUrl = trimmed;
+    }
     const mergedPrefs =
       body.preferences !== undefined
         ? { ...safeJson<Record<string, unknown>>(user.preferencesJson, {}), ...body.preferences }

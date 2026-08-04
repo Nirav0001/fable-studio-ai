@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { Loader2 } from "lucide-react";
+import { api, ApiError } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
@@ -55,6 +58,20 @@ export function NotificationPrefs({ preferences }: NotificationPrefsProps) {
   const qc = useQueryClient();
   // Local overrides give instant feedback; server state wins again on refetch.
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  const savedWebhookUrl =
+    typeof preferences.discordWebhookUrl === "string" ? preferences.discordWebhookUrl : "";
+  const [webhookDraft, setWebhookDraft] = useState(savedWebhookUrl);
+
+  const saveWebhook = useMutation({
+    mutationFn: (url: string) =>
+      api.patch<unknown>("/settings", { preferences: { discordWebhookUrl: url } }),
+    onSuccess: (_data, url) => {
+      toast.success(url ? "Discord webhook saved" : "Discord webhook removed");
+      qc.invalidateQueries({ queryKey: ["settings"] });
+    },
+    onError: (err) =>
+      toast.error(err instanceof ApiError ? err.message : "Could not save webhook"),
+  });
 
   const save = useMutation({
     mutationFn: (change: { key: string; value: boolean }) =>
@@ -93,14 +110,43 @@ export function NotificationPrefs({ preferences }: NotificationPrefsProps) {
         {PREF_ROWS.map((row) => {
           const id = `pref-${row.key}`;
           return (
-            <div key={row.key} className="flex items-center justify-between gap-4 py-3">
-              <div className="min-w-0">
-                <Label htmlFor={id} className="text-sm font-medium">
-                  {row.label}
-                </Label>
-                <p className="mt-0.5 text-xs text-muted-foreground">{row.description}</p>
+            <div key={row.key} className="py-3">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <Label htmlFor={id} className="text-sm font-medium">
+                    {row.label}
+                  </Label>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{row.description}</p>
+                </div>
+                <Switch id={id} checked={valueFor(row)} onCheckedChange={(v) => toggle(row, v)} />
               </div>
-              <Switch id={id} checked={valueFor(row)} onCheckedChange={(v) => toggle(row, v)} />
+
+              {row.key === "discordEnabled" && valueFor(row) && (
+                <div className="mt-3 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="url"
+                      autoComplete="off"
+                      placeholder="https://discord.com/api/webhooks/…"
+                      value={webhookDraft}
+                      onChange={(e) => setWebhookDraft(e.target.value)}
+                    />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={saveWebhook.isPending || webhookDraft.trim() === savedWebhookUrl}
+                      onClick={() => saveWebhook.mutate(webhookDraft.trim())}
+                    >
+                      {saveWebhook.isPending && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+                      Save
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Discord → your channel → Edit channel → Integrations → Webhooks → New
+                    Webhook → Copy Webhook URL. Every render/upload/autopilot event lands there.
+                  </p>
+                </div>
+              )}
             </div>
           );
         })}
