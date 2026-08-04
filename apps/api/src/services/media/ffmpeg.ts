@@ -464,14 +464,13 @@ async function renderFiltersToVideo(
     "-t", d,
     outPath,
   );
+  // Delete the filtergraph only on SUCCESS — on failure it stays next to the
+  // output as the primary debugging artifact for what ffmpeg was actually fed.
+  await runFfmpeg(args, label);
   try {
-    await runFfmpeg(args, label);
-  } finally {
-    try {
-      unlinkSync(scriptPath);
-    } catch {
-      /* best effort */
-    }
+    unlinkSync(scriptPath);
+  } catch {
+    /* best effort */
   }
 }
 
@@ -1151,14 +1150,12 @@ export async function renderClipFromSource(spec: SourceClipRender, outPath: stri
     "-t", d,
     outPath,
   ];
+  // Filtergraph is kept on failure as the debugging artifact.
+  await runFfmpeg(args, `clip-src:${outPath.slice(-24)}`);
   try {
-    await runFfmpeg(args, `clip-src:${outPath.slice(-24)}`);
-  } finally {
-    try {
-      unlinkSync(scriptPath);
-    } catch {
-      /* best effort */
-    }
+    unlinkSync(scriptPath);
+  } catch {
+    /* best effort */
   }
 }
 
@@ -1187,14 +1184,12 @@ async function renderStingerCard(rank: number, label: string, outPath: string): 
     "-t", "1.0",
     outPath,
   ];
+  // Filtergraph is kept on failure as the debugging artifact.
+  await runFfmpeg(args, `stinger:${rank}`);
   try {
-    await runFfmpeg(args, `stinger:${rank}`);
-  } finally {
-    try {
-      unlinkSync(scriptPath);
-    } catch {
-      /* best effort */
-    }
+    unlinkSync(scriptPath);
+  } catch {
+    /* best effort */
   }
 }
 
@@ -1220,14 +1215,12 @@ async function renderCtaCard(text: string, outPath: string): Promise<void> {
     "-t", "2.2",
     outPath,
   ];
+  // Filtergraph is kept on failure as the debugging artifact.
+  await runFfmpeg(args, "cta-card");
   try {
-    await runFfmpeg(args, "cta-card");
-  } finally {
-    try {
-      unlinkSync(scriptPath);
-    } catch {
-      /* best effort */
-    }
+    unlinkSync(scriptPath);
+  } catch {
+    /* best effort */
   }
 }
 

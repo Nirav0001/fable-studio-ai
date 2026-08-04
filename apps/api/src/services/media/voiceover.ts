@@ -238,8 +238,20 @@ export async function synthesizeVoiceover(
           t.durationSec = await probeDuration(t.path);
         }),
       );
-      log.info(`Voiceover: ${tracks.length}/${usable.length} lines via ${provider.name}`);
-      return tracks;
+      // A file ffprobe can't read (truncated/empty TTS response) MUST NOT
+      // reach ffmpeg — one bad audio input crashes the whole filter graph
+      // ("Error while processing the decoded data for stream #N").
+      const good = tracks.filter((t) => t.durationSec > 0.1);
+      if (good.length === 0) {
+        throw new Error(`${provider.name} produced no playable audio (${tracks.length} unreadable files)`);
+      }
+      if (good.length < tracks.length) {
+        log.warn(
+          `Voiceover: dropped ${tracks.length - good.length} unreadable file(s) from ${provider.name}`,
+        );
+      }
+      log.info(`Voiceover: ${good.length}/${usable.length} lines via ${provider.name}`);
+      return good;
     } catch (err) {
       log.warn(`Voiceover provider ${provider.name} failed: ${err instanceof Error ? err.message : String(err)}`);
     }

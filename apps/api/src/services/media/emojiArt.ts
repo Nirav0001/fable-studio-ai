@@ -181,6 +181,12 @@ export async function emojiPng(emoji: string): Promise<string | null> {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const buf = Buffer.from(await res.arrayBuffer());
       if (buf.byteLength < 500) throw new Error("suspiciously small file");
+      // Size alone isn't proof — a CDN error page can exceed 500 bytes. Only a
+      // real PNG (\x89PNG magic) may enter the cache; anything else would
+      // crash ffmpeg's decoder mid-render.
+      if (!(buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47)) {
+        throw new Error("response is not a PNG");
+      }
       await writeFile(local, buf);
       return local;
     } catch (err) {
