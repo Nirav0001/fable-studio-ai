@@ -144,11 +144,29 @@ async function syncAllChannelStats(): Promise<void> {
  * serialisation is therefore a correctness requirement, not a nicety: nothing
  * new starts until the generate/render pipeline is idle.
  */
+/** A generate+render cycle takes ~2 min; anything older is orphaned. */
+const STALE_JOB_MS = 20 * 60_000;
+
 async function batchTick(): Promise<void> {
+  // The in-memory queue dies with the process, so a restart mid-job leaves
+  // JobRecords pinned at "active" forever. Those would make the batch look
+  // permanently busy and stall it, so reap them first.
+  const staleBefore = new Date(Date.now() - STALE_JOB_MS);
+  const reaped = await prisma.jobRecord.updateMany({
+    where: { status: { in: ["queued", "active"] }, createdAt: { lt: staleBefore } },
+    data: {
+      status: "failed",
+      message: "Abandoned — the worker restarted before this job finished",
+      finishedAt: new Date(),
+    },
+  });
+  if (reaped.count > 0) log.warn(`Reaped ${reaped.count} orphaned job(s)`);
+
   const busy = await prisma.jobRecord.count({
     where: {
       name: { in: [QUEUE_JOBS.PROJECT_GENERATE, QUEUE_JOBS.PROJECT_RENDER] },
       status: { in: ["queued", "active"] },
+      createdAt: { gte: staleBefore },
     },
   });
   if (busy > 0) return;
