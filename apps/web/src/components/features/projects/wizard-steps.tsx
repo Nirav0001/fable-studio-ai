@@ -11,6 +11,7 @@ import {
   WYR_THEMES,
   formatCompact,
 } from "@fable/shared";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { cn, CHANNEL_TYPE_META } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,7 +105,7 @@ export function WizardDots({
             >
               <span
                 className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold transition-all",
+                  "flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold transition-colors",
                   active &&
                     "gradient-primary border-transparent text-white shadow-lg shadow-primary/30",
                   done && "border-primary/50 bg-primary/15 text-violet-300",
@@ -152,7 +153,7 @@ function Segmented<T extends string | number>({
             type="button"
             onClick={() => onChange(opt)}
             className={cn(
-              "rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-all",
+              "rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-colors",
               active
                 ? "gradient-primary text-white shadow-md shadow-primary/25"
                 : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
@@ -216,9 +217,9 @@ export function StepChannel({
             onClick={() => onSelect(c)}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: i * 0.04 }}
+            transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(i) }}
             className={cn(
-              "glass glass-hover relative flex flex-col items-start gap-3 rounded-2xl p-5 text-left transition-all",
+              "glass glass-hover relative flex flex-col items-start gap-3 rounded-2xl p-5 text-left transition-colors",
               active && "border-primary/60 ring-2 ring-primary/50",
             )}
           >
@@ -337,7 +338,7 @@ export function StepConfig({
                   type="button"
                   onClick={() => patch({ theme })}
                   className={cn(
-                    "glass glass-hover flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 transition-all",
+                    "glass glass-hover flex flex-col items-center gap-1.5 rounded-xl px-2 py-3 transition-colors",
                     active && "border-primary/60 ring-2 ring-primary/50",
                   )}
                 >

@@ -5,7 +5,20 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 
 import { cn } from "@/lib/utils";
 
-const TooltipProvider = TooltipPrimitive.Provider;
+// skipDelayDuration: after the first tooltip in a toolbar, the rest appear
+// instantly while sweeping — re-playing delay+animation per trigger is a
+// classic feel-killer.
+const TooltipProvider = ({
+  delayDuration = 300,
+  skipDelayDuration = 300,
+  ...props
+}: React.ComponentProps<typeof TooltipPrimitive.Provider>) => (
+  <TooltipPrimitive.Provider
+    delayDuration={delayDuration}
+    skipDelayDuration={skipDelayDuration}
+    {...props}
+  />
+);
 
 const Tooltip = TooltipPrimitive.Root;
 
@@ -20,7 +33,7 @@ const TooltipContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 max-w-xs overflow-hidden rounded-xl border border-border bg-popover/95 px-3 py-1.5 text-xs text-popover-foreground shadow-xl backdrop-blur-xl animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "z-50 max-w-xs overflow-hidden rounded-xl border border-border bg-popover/95 px-3 py-1.5 text-xs text-popover-foreground shadow-xl backdrop-blur-xl origin-[--radix-tooltip-content-transform-origin] duration-150 ease-[var(--ease-out)] animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
         className,
       )}
       {...props}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -211,7 +212,7 @@ export default function ChannelDetailPage() {
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
+        transition={{ duration: 0.3, ease: EASE_OUT }}
         className="glass flex flex-wrap items-center justify-between gap-4 rounded-2xl p-5"
       >
         <div className="flex min-w-0 items-center gap-4">
@@ -322,7 +323,7 @@ export default function ChannelDetailPage() {
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.06 }}
+        transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(1) }}
       >
         <Tabs defaultValue="overview">
           <div className="overflow-x-auto pb-1">
@@ -361,7 +362,7 @@ export default function ChannelDetailPage() {
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.12 }}
+        transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(2) }}
         className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-red-500/25 bg-red-500/5 p-5"
       >
         <div>

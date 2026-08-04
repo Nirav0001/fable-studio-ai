@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Check, Lightbulb, Loader2, PenLine, X } from "lucide-react";
 import type { WyrQuestionT } from "@fable/shared";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,14 +77,14 @@ export function WyrQuestionCard({ question, editable = false, saving = false, on
 
       {/* ── Audience split bar ───────────────────────────────────────── */}
       <div className="space-y-1.5 border-t border-border/50 p-3">
-        <div className="flex h-2 w-full overflow-hidden rounded-full bg-secondary/70">
+        <div className="relative h-2 w-full overflow-hidden rounded-full bg-secondary/70">
+          <div className="absolute inset-0 bg-gradient-to-r from-fuchsia-500/70 to-fuchsia-400/70" />
           <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${pctA}%` }}
-            transition={{ duration: 0.7, ease: "easeOut" }}
-            className="h-full bg-gradient-to-r from-violet-500 to-violet-400"
+            initial={{ transform: "scaleX(0)" }}
+            animate={{ transform: `scaleX(${pctA / 100})` }}
+            transition={{ duration: 0.35, ease: EASE_OUT }}
+            className="absolute inset-0 origin-left bg-gradient-to-r from-violet-500 to-violet-400"
           />
-          <div className="h-full flex-1 bg-gradient-to-r from-fuchsia-500/70 to-fuchsia-400/70" />
         </div>
         <div className="flex items-center justify-between text-[11px] font-medium tabular-nums">
           <span className="text-violet-300">{pctA}% pick A</span>
@@ -159,7 +160,7 @@ export function WyrQuestionList({ questions, className }: { questions: WyrQuesti
           key={`${q.id ?? i}-${q.optionA}`}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: i * 0.04 }}
+          transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(i) }}
         >
           <WyrQuestionCard question={q} />
         </motion.div>

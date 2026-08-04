@@ -5,12 +5,14 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  // Scoped transition list (never transition-all) + universal press feedback:
+  // every variant scales to 0.97 on :active over 160ms ease-out.
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-medium transition-[color,background-color,border-color,box-shadow,transform,filter,opacity] duration-200 [transition-timing-function:var(--ease-out)] active:scale-[0.97] active:duration-[160ms] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default:
-          "gradient-primary text-white shadow-lg shadow-primary/25 hover:shadow-primary/45 hover:brightness-110 active:scale-[0.98]",
+          "gradient-primary text-white shadow-lg shadow-primary/25 hover:shadow-primary/45 hover:brightness-110",
         secondary:
           "border border-border/70 bg-secondary/70 text-secondary-foreground hover:border-primary/30 hover:bg-secondary",
         ghost: "text-muted-foreground hover:bg-accent/50 hover:text-foreground",

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { EASE_OUT, SPRING_CELEBRATE } from "@/lib/motion";
 import { cn, CHANNEL_TYPE_META } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -250,11 +251,17 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
           <StatusBadge status={p.status} />
         </div>
 
-        {busy && (
-          <div className="mt-3">
-            <ProgressStages stage={p.stage ?? "Working…"} progress={p.progress ?? 0} />
-          </div>
-        )}
+        <AnimatePresence>
+          {busy && (
+            <motion.div
+              className="mt-3"
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease: EASE_OUT }}
+            >
+              <ProgressStages stage={p.stage ?? "Working…"} progress={p.progress ?? 0} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* ── Failed banner ───────────────────────────────────────────── */}
@@ -281,7 +288,12 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       )}
 
       {/* ── Tabs ────────────────────────────────────────────────────── */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+      <motion.div
+        key={busy ? "generating" : "ready"}
+        initial={{ opacity: 0, scale: 0.97 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={SPRING_CELEBRATE}
+      >
         <Tabs defaultValue={p.type === "clips" ? "clips" : "script"}>
           <TabsList className="h-auto flex-wrap">
             <TabsTrigger value="script">

@@ -122,7 +122,7 @@ export function NewChannelDialog({
                     type="button"
                     onClick={() => setType(t.value)}
                     className={cn(
-                      "flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all",
+                      "flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-[color,background-color,border-color,box-shadow]",
                       selected
                         ? "border-primary/60 bg-primary/10 shadow-[0_0_20px_rgba(139,92,246,0.15)]"
                         : "border-border/70 bg-secondary/30 hover:border-primary/30 hover:bg-secondary/50",
@@ -225,7 +225,7 @@ export function NewChannelDialog({
                       aria-label={`Avatar colour ${c}`}
                       onClick={() => setAvatarColor(c)}
                       className={cn(
-                        "h-9 w-9 rounded-full border-2 transition-transform hover:scale-110",
+                        "h-9 w-9 rounded-full border-2 transition-transform duration-150 ease-[var(--ease-out)] hover:scale-110",
                         avatarColor === c
                           ? "border-white shadow-[0_0_0_3px_rgba(139,92,246,0.45)]"
                           : "border-transparent",

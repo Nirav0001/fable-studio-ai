@@ -8,6 +8,7 @@ import { formatCompact, formatGbp } from "@fable/shared";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/widgets/page-header";
+import { StudioFloor } from "@/components/features/studio/studio-floor";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -76,74 +77,6 @@ const LOG_COLORS: Record<string, string> = {
   system: "text-zinc-400",
 };
 
-function AgentCharacter({
-  agent,
-  index,
-}: {
-  agent: StudioState["agents"][number];
-  index: number;
-}) {
-  const meta = AGENT_META[agent.key];
-  const working = agent.status === "working";
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.08 }}
-      className="relative flex w-32 flex-col items-center sm:w-40"
-    >
-      {/* Task speech bubble */}
-      {working && agent.task && (
-        <motion.div
-          initial={{ opacity: 0, y: 8, scale: 0.94 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          className="absolute -top-14 z-10 w-44 rounded-xl border border-primary/30 bg-popover/95 px-3 py-2 text-center shadow-xl backdrop-blur-xl"
-        >
-          <p className="truncate text-[11px] font-medium">{agent.task}</p>
-          {agent.progress !== null && <Progress value={agent.progress} className="mt-1.5 h-1" />}
-          <span className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b border-r border-primary/30 bg-popover/95" />
-        </motion.div>
-      )}
-
-      {/* The 3D character */}
-      <motion.div
-        animate={working ? { y: [0, -8, 0] } : { y: [0, -3, 0] }}
-        transition={{ duration: working ? 1.4 : 3.2, repeat: Infinity, ease: "easeInOut" }}
-        className={cn(
-          "relative overflow-hidden rounded-2xl ring-1 transition-all",
-          working ? "ring-primary/50 glow-primary" : "ring-border/50 opacity-80 saturate-[0.8]",
-        )}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={`/studio/${agent.key}.png`}
-          alt={meta.name}
-          className="h-28 w-28 object-cover sm:h-36 sm:w-36"
-        />
-      </motion.div>
-
-      {/* Floor shadow */}
-      <div
-        className={cn(
-          "mt-2 h-2.5 w-20 rounded-[100%] bg-black/50 blur-[3px] transition-opacity",
-          working ? "opacity-90" : "opacity-50",
-        )}
-      />
-
-      <div className="mt-2 flex items-center gap-1.5">
-        <span
-          className={cn(
-            "h-1.5 w-1.5 rounded-full",
-            working ? "animate-pulse-glow bg-emerald-400" : "bg-zinc-600",
-          )}
-        />
-        <p className="font-display text-sm font-bold">{meta.name}</p>
-      </div>
-      <p className={cn("text-[10.5px]", meta.color)}>{meta.role}</p>
-    </motion.div>
-  );
-}
-
 export default function StudioPage() {
   const state = useQuery({
     queryKey: ["studio-state"],
@@ -174,30 +107,14 @@ export default function StudioPage() {
         </div>
       ) : (
         <>
-          {/* ── The studio floor: isometric grid + 3D crew ── */}
-          <div className="glass relative overflow-hidden rounded-3xl px-4 pb-6 pt-20">
-            {/* Perspective floor grid */}
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-[-20%] bottom-[-10%] h-3/5 opacity-60"
-              style={{
-                transform: "perspective(700px) rotateX(58deg)",
-                backgroundImage:
-                  "repeating-linear-gradient(0deg, hsl(263 60% 60% / 0.16) 0 1px, transparent 1px 44px), repeating-linear-gradient(90deg, hsl(263 60% 60% / 0.16) 0 1px, transparent 1px 44px)",
-                maskImage: "linear-gradient(to top, black 30%, transparent)",
-                WebkitMaskImage: "linear-gradient(to top, black 30%, transparent)",
-              }}
-            />
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/10 to-transparent"
-            />
-            <div className="relative flex flex-wrap items-end justify-center gap-x-2 gap-y-10 sm:justify-around">
-              {d.agents.map((agent, i) => (
-                <AgentCharacter key={agent.key} agent={agent} index={i} />
-              ))}
-            </div>
-          </div>
+          {/* ── The studio floor: isometric tycoon sim ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+          >
+            <StudioFloor agents={d.agents} queueDepth={d.counters.queueDepth} />
+          </motion.div>
 
           {/* ── Counters + spend ── */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

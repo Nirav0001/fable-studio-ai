@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import { AlertTriangle, Film } from "lucide-react";
 import type { ChannelSummary } from "@fable/shared";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { cn, CHANNEL_TYPE_META } from "@/lib/utils";
 import { StatusBadge } from "@/components/widgets/status-badge";
 import { ScoreDial } from "@/components/widgets/score-dial";
@@ -35,7 +36,7 @@ export function ProjectCard({ project, channel, index }: ProjectCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: index * 0.04, ease: "easeOut" }}
+      transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(index) }}
       className="h-full"
     >
       <Link href={`/projects/${project.id}`} className="block h-full">

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { toast } from "sonner";
 import { Crown, MousePointerClick } from "lucide-react";
 import type { ThumbnailVariant } from "@fable/shared";
@@ -44,13 +45,13 @@ export function ThumbnailGrid({ thumbnails }: ThumbnailGridProps) {
               type="button"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: i * 0.06 }}
+              transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(i) }}
               onClick={() => {
                 setSelectedId(t.id);
                 toast.success("Primary thumbnail set", { description: t.headline });
               }}
               className={cn(
-                "group relative overflow-hidden rounded-2xl border text-left transition-all",
+                "group relative overflow-hidden rounded-2xl border text-left transition-[border-color,box-shadow]",
                 primary
                   ? "border-primary/70 ring-2 ring-primary/50 shadow-lg shadow-primary/20"
                   : "border-border/60 hover:border-primary/40",
@@ -61,7 +62,7 @@ export function ThumbnailGrid({ thumbnails }: ThumbnailGridProps) {
                 className="relative flex aspect-[9/16] flex-col items-center justify-center gap-2 p-3"
                 style={{ background: `linear-gradient(160deg, ${t.bgFrom}, ${t.bgTo})` }}
               >
-                <span className="text-4xl drop-shadow-lg transition-transform duration-300 group-hover:scale-110">
+                <span className="text-4xl drop-shadow-lg transition-transform duration-150 ease-[var(--ease-out)] group-hover:scale-105">
                   {t.emoji}
                 </span>
                 <span

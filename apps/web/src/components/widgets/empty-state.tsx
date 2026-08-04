@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { motion } from "framer-motion";
+import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 export interface EmptyStateProps {
@@ -18,7 +19,7 @@ export function EmptyState({ icon: Icon, title, body, action, className }: Empty
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
+      transition={{ duration: 0.3, ease: EASE_OUT }}
       className={cn("flex flex-col items-center justify-center px-6 py-14 text-center", className)}
     >
       <div className="mb-4 flex h-14 w-14 animate-float items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 shadow-lg shadow-primary/10">

@@ -289,7 +289,7 @@ export function WeekCalendar({ weekStart, slots, channels, bestTimes, onCellClic
         </div>
       </div>
 
-      <DragOverlay dropAnimation={null}>
+      <DragOverlay>
         {activeSlot && (
           <div className="w-44">
             <SlotChipContent

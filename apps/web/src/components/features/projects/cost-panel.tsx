@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { BrainCircuit, Clapperboard, Mic, Wallet, type LucideIcon } from "lucide-react";
 import type { CostEstimate } from "@fable/shared";
 import { formatCompact, formatGbp } from "@fable/shared";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 
 interface CostRow {
   icon: LucideIcon;
@@ -53,7 +54,7 @@ export function CostPanel({ cost }: CostPanelProps) {
                 key={row.label}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: i * 0.06 }}
+                transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(i) }}
                 className="flex items-center gap-4 p-4"
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-500/25 bg-violet-500/10">
@@ -67,10 +68,10 @@ export function CostPanel({ cost }: CostPanelProps) {
                   <p className="text-[11px] text-muted-foreground">{row.detail}</p>
                   <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-secondary/70">
                     <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${share}%` }}
-                      transition={{ duration: 0.6, delay: 0.2 + i * 0.06, ease: "easeOut" }}
-                      className="gradient-primary h-full rounded-full"
+                      initial={{ transform: "scaleX(0)" }}
+                      animate={{ transform: `scaleX(${share / 100})` }}
+                      transition={{ duration: 0.35, delay: staggerDelay(i), ease: EASE_OUT }}
+                      className="gradient-primary h-full w-full origin-left rounded-full"
                     />
                   </div>
                 </div>

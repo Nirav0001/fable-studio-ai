@@ -19,6 +19,7 @@ import {
 import type { ChannelSummary, VideoSummary } from "@fable/shared";
 import { formatCompact, formatDuration } from "@fable/shared";
 import { api } from "@/lib/api";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { cn, CHANNEL_TYPE_META } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -116,7 +117,7 @@ export function VideoCard({ video, channel, index, onEditSeo, onSchedule, onAbTe
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: index * 0.04, ease: "easeOut" }}
+      transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(index) }}
     >
       <div className="glass glass-hover group flex h-full flex-col overflow-hidden rounded-2xl">
         {/* ── Thumbnail ─────────────────────────────────────────────── */}
@@ -126,7 +127,7 @@ export function VideoCard({ video, channel, index, onEditSeo, onSchedule, onAbTe
             <img
               src={thumb}
               alt={video.title}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+              className="h-full w-full object-cover transition-transform duration-150 ease-[var(--ease-out)] group-hover:scale-[1.03]"
             />
           ) : (
             <div

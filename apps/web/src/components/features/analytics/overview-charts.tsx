@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { format } from "date-fns";
 import { BarChart3 } from "lucide-react";
 import {
@@ -83,7 +84,7 @@ export function OverviewCharts({ series, loading, growth, growthLoading, days }:
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
+        transition={{ duration: 0.3, ease: EASE_OUT }}
         className="min-w-0"
       >
         <AreaCard
@@ -97,7 +98,7 @@ export function OverviewCharts({ series, loading, growth, growthLoading, days }:
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.04 }}
+        transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(1) }}
         className="glass min-w-0 rounded-2xl p-5"
       >
         <div className="mb-1 flex items-center justify-between">
@@ -177,7 +178,7 @@ export function OverviewCharts({ series, loading, growth, growthLoading, days }:
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.08 }}
+        transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(2) }}
         className="min-w-0 lg:col-span-2 xl:col-span-1"
       >
         {growthLoading ? (

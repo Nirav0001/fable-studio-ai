@@ -7,6 +7,7 @@ import { Clock, HardDrive, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDuration } from "@fable/shared";
 import { api } from "@/lib/api";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,7 +84,7 @@ export function AssetCard({ asset, index, onChanged }: AssetCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.04 }}
+      transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(index) }}
       className="glass glass-hover flex flex-col gap-3 rounded-2xl p-4"
     >
       <div className="flex items-center justify-between gap-2">

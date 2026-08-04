@@ -1,7 +1,9 @@
 "use client";
 
 import { format } from "date-fns";
+import { motion } from "framer-motion";
 import { Receipt } from "lucide-react";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { formatGbp } from "@fable/shared";
 import { Badge } from "@/components/ui/badge";
 
@@ -47,10 +49,16 @@ export function InvoicesTable({ invoices }: InvoicesTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
-            {invoices.map((invoice) => {
+            {invoices.map((invoice, i) => {
               const date = new Date(invoice.date);
               return (
-                <tr key={invoice.id} className="transition-colors hover:bg-accent/20">
+                <motion.tr
+                  key={invoice.id}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(i, 8) }}
+                  className="transition-colors hover:bg-accent/20"
+                >
                   <td className="px-5 py-3 font-mono text-xs text-muted-foreground">
                     {invoice.id}
                   </td>
@@ -68,7 +76,7 @@ export function InvoicesTable({ invoices }: InvoicesTableProps) {
                       {invoice.status}
                     </Badge>
                   </td>
-                </tr>
+                </motion.tr>
               );
             })}
           </tbody>

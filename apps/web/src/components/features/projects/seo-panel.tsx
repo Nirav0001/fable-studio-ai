@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { SeoPack, TitleIdea } from "@fable/shared";
 import { api } from "@/lib/api";
+import { EASE_OUT } from "@/lib/motion";
 import { cn, scoreColor } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -350,13 +351,13 @@ export function SeoPanel({ projectId, seo, channelType, disabled = false }: SeoP
                   type="button"
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2, delay: Math.min(i, 15) * 0.02 }}
+                  transition={{ duration: 0.2, ease: EASE_OUT, delay: Math.min(i, 15) * 0.02 }}
                   onClick={() => {
                     setTitle(idea.title.slice(0, 100));
                     setIdeasOpen(false);
                     toast.success("Title applied", { description: "Hit Save SEO pack to persist it." });
                   }}
-                  className="flex w-full items-start gap-3 rounded-xl border border-border/60 bg-secondary/30 p-3 text-left transition-all hover:border-primary/40 hover:bg-accent/40"
+                  className="flex w-full items-start gap-3 rounded-xl border border-border/60 bg-secondary/30 p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent/40"
                 >
                   <span
                     className={cn(

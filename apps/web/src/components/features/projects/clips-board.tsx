@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Check, ChevronDown, Clock, Loader2, Quote, X } from "lucide-react";
 import { formatDuration } from "@fable/shared";
 import { api } from "@/lib/api";
+import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScoreDial } from "@/components/widgets/score-dial";
@@ -73,11 +74,11 @@ export function ClipsBoard({ projectId, clips, disabled = false }: ClipsBoardPro
               key={clip.id}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: Math.min(i, 10) * 0.04 }}
+              transition={{ duration: 0.3, ease: EASE_OUT, delay: Math.min(i, 10) * 0.04 }}
             >
               <div
                 className={cn(
-                  "glass rounded-2xl p-4 transition-all",
+                  "glass rounded-2xl p-4 transition-[color,background-color,border-color,box-shadow,opacity]",
                   kept && "border-emerald-500/40 bg-emerald-500/[0.04] ring-1 ring-emerald-500/25",
                   discarded && "opacity-55",
                 )}
@@ -164,16 +165,18 @@ export function ClipsBoard({ projectId, clips, disabled = false }: ClipsBoardPro
                       />
                       {expanded ? "Hide transcript" : "Show transcript"}
                     </button>
-                    {expanded && (
-                      <motion.p
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        transition={{ duration: 0.25 }}
-                        className="mt-2 whitespace-pre-wrap rounded-lg bg-secondary/40 p-3 text-xs leading-relaxed text-muted-foreground"
-                      >
-                        {clip.transcript}
-                      </motion.p>
-                    )}
+                    <div
+                      className={cn(
+                        "grid transition-[grid-template-rows,opacity] duration-200 ease-[var(--ease-out)]",
+                        expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+                      )}
+                    >
+                      <div className="overflow-hidden">
+                        <p className="mt-2 whitespace-pre-wrap rounded-lg bg-secondary/40 p-3 text-xs leading-relaxed text-muted-foreground">
+                          {clip.transcript}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

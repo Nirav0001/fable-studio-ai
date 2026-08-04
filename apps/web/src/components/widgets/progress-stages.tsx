@@ -4,6 +4,7 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { clamp } from "@fable/shared";
+import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 interface StageDef {
@@ -57,10 +58,10 @@ export function ProgressStages({ stage, progress, className }: ProgressStagesPro
               {i > 0 && (
                 <div className="relative mt-[13px] h-0.5 min-w-[12px] flex-1 overflow-hidden rounded-full bg-secondary/80">
                   <motion.div
-                    className="gradient-primary absolute inset-y-0 left-0"
+                    className="gradient-primary absolute inset-0 origin-left"
                     initial={false}
-                    animate={{ width: finished || i <= active ? "100%" : "0%" }}
-                    transition={{ duration: 0.45, ease: "easeOut" }}
+                    animate={{ transform: `scaleX(${finished || i <= active ? 1 : 0})` }}
+                    transition={{ duration: 0.45, ease: EASE_OUT }}
                   />
                 </div>
               )}

@@ -7,6 +7,7 @@ import { LayoutTemplate, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { safeJson } from "@fable/shared";
 import { api } from "@/lib/api";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { PageHeader } from "@/components/widgets/page-header";
 import { EmptyState } from "@/components/widgets/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -145,7 +146,7 @@ export default function TemplatesPage() {
             key={group.value}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: gi * 0.06 }}
+            transition={{ duration: 0.3, ease: EASE_OUT }}
             className="space-y-3"
           >
             <div className="flex items-baseline gap-2.5">
@@ -166,7 +167,7 @@ export default function TemplatesPage() {
                     key={template.id}
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: gi * 0.06 + i * 0.04 }}
+                    transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(i, 5) }}
                     className="glass glass-hover flex flex-col gap-3 rounded-2xl p-5"
                     style={{ borderLeft: `3px solid ${template.accent}` }}
                   >

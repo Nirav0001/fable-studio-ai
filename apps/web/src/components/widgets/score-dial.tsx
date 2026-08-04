@@ -3,6 +3,7 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import { clamp } from "@fable/shared";
+import { EASE_OUT } from "@/lib/motion";
 import { cn, scoreColor } from "@/lib/utils";
 
 export interface ScoreDialProps {
@@ -57,7 +58,7 @@ export function ScoreDial({ score, size = 64, className }: ScoreDialProps) {
           strokeDasharray={circumference}
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 0.9, ease: "easeOut" }}
+          transition={{ duration: 0.45, ease: EASE_OUT }}
         />
       </svg>
       <span

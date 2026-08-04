@@ -86,7 +86,7 @@ export function Sidebar() {
       <div className="border-t border-border/60 p-4">
         <div className="glass rounded-xl p-3">
           <div className="flex items-center gap-2">
-            <span className="inline-flex h-2 w-2 animate-pulse-glow rounded-full bg-emerald-400" />
+            <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
             <span className="text-xs font-medium text-muted-foreground">Automation active</span>
           </div>
           <p className="mt-1 text-[11px] leading-snug text-muted-foreground/70">

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { AnalyticsOverviewT } from "@fable/shared";
 import { formatCompact, formatDuration, formatGbp } from "@fable/shared";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { StatCard } from "@/components/widgets/stat-card";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -115,7 +116,7 @@ export function StatGrid({ overview }: { overview?: AnalyticsOverviewT }) {
           key={card.label}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: i * 0.04 }}
+          transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(i) }}
         >
           <StatCard
             label={card.label}

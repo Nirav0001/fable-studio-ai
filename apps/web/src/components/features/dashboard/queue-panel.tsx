@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Cog, Loader2 } from "lucide-react";
 import type { JobSummary } from "@fable/shared";
 import { api } from "@/lib/api";
+import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -77,8 +78,8 @@ export function QueuePanel() {
                 layout
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, height: 0, marginTop: 0, overflow: "hidden" }}
-                transition={{ duration: 0.25 }}
+                exit={{ opacity: 0, transform: "scale(0.97)" }}
+                transition={{ duration: 0.25, ease: EASE_OUT }}
                 className="rounded-xl border border-border/60 bg-secondary/30 p-3"
               >
                 <div className="flex items-center justify-between gap-2">
@@ -102,10 +103,12 @@ export function QueuePanel() {
 
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
                   <motion.div
-                    className="gradient-primary h-full rounded-full"
+                    className="gradient-primary h-full w-full origin-left rounded-full"
                     initial={false}
-                    animate={{ width: `${Math.max(2, Math.min(100, job.progress))}%` }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    animate={{
+                      transform: `scaleX(${Math.max(2, Math.min(100, job.progress)) / 100})`,
+                    }}
+                    transition={{ duration: 0.6, ease: EASE_OUT }}
                   />
                 </div>
 

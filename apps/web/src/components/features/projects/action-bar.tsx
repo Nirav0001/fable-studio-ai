@@ -15,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { EASE_OUT } from "@/lib/motion";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -103,7 +104,7 @@ export function ActionBar({ project }: ActionBarProps) {
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.15 }}
+        transition={{ duration: 0.3, delay: 0.06, ease: EASE_OUT }}
         className="fixed bottom-5 right-4 z-40 sm:right-6 lg:right-8"
       >
         <div className="glass flex items-center gap-1.5 rounded-2xl p-1.5 shadow-2xl">

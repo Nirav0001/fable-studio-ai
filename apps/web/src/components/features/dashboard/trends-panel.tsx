@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Check, Copy, Flame } from "lucide-react";
 import { toast } from "sonner";
 import type { TrendItem } from "@fable/shared";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -94,10 +95,12 @@ export function TrendsPanel() {
 
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary">
                 <motion.div
-                  className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(100, Math.max(0, trend.momentum))}%` }}
-                  transition={{ duration: 0.7, delay: 0.15 + i * 0.04, ease: "easeOut" }}
+                  className="h-full w-full origin-left rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                  initial={{ transform: "scaleX(0)" }}
+                  animate={{
+                    transform: `scaleX(${Math.min(100, Math.max(0, trend.momentum)) / 100})`,
+                  }}
+                  transition={{ duration: 0.35, ease: EASE_OUT, delay: staggerDelay(i) }}
                 />
               </div>
 

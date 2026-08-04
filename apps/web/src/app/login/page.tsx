@@ -2,9 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
+import { EASE_OUT, SPRING_CELEBRATE } from "@/lib/motion";
 import { api, ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,7 +56,7 @@ export default function LoginPage() {
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+        transition={{ duration: 0.4, ease: EASE_OUT }}
         className="glass w-full max-w-md rounded-3xl p-8"
       >
         <div className="mb-8 flex flex-col items-center text-center">
@@ -73,20 +74,32 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={submit} className="space-y-4">
-          {isRegister && (
-            <div className="space-y-1.5">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                type="text"
-                autoComplete="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
-                required
-              />
-            </div>
-          )}
+          <AnimatePresence initial={false}>
+            {isRegister && (
+              <motion.div
+                className="grid"
+                initial={{ gridTemplateRows: "0fr", opacity: 0 }}
+                animate={{ gridTemplateRows: "1fr", opacity: 1 }}
+                exit={{ gridTemplateRows: "0fr", opacity: 0 }}
+                transition={SPRING_CELEBRATE}
+              >
+                <div className="min-h-0 overflow-hidden">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="name">Name</Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      autoComplete="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Your name"
+                      required
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
             <Input

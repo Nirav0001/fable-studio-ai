@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Tv } from "lucide-react";
 import type { ChannelSummary } from "@fable/shared";
 import { formatCompact } from "@fable/shared";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { cn, CHANNEL_TYPE_META } from "@/lib/utils";
 import { EmptyState } from "@/components/widgets/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -61,7 +62,7 @@ export function ChannelsRow({ channels, loading }: ChannelsRowProps) {
                 key={channel.id}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: i * 0.04 }}
+                transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(i) }}
               >
                 <Link
                   href={`/channels/${channel.id}`}

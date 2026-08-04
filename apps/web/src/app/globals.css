@@ -25,6 +25,10 @@
     --input: 258 25% 15%;
     --ring: 263 84% 66%;
     --radius: 1rem;
+
+    /* Motion tokens — keep in sync with src/lib/motion.ts */
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   }
 
   * {
@@ -74,14 +78,25 @@
       0 8px 32px hsl(258 60% 2% / 0.5);
   }
 
+  /* Transform is deliberately NOT in the hover transition list — framer-motion
+     writes transforms per-frame on many of these elements and a CSS transform
+     transition would fight it. Press feedback gets its own fast channel. */
   .glass-hover {
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 160ms var(--ease-out);
   }
-  .glass-hover:hover {
-    border-color: hsl(263 70% 65% / 0.3);
-    box-shadow:
-      0 1px 0 hsl(263 80% 80% / 0.08) inset,
-      0 12px 40px hsl(263 60% 20% / 0.35);
+  @media (hover: hover) and (pointer: fine) {
+    .glass-hover:hover {
+      border-color: hsl(263 70% 65% / 0.3);
+      box-shadow:
+        0 1px 0 hsl(263 80% 80% / 0.08) inset,
+        0 12px 40px hsl(263 60% 20% / 0.35);
+    }
+  }
+  .glass-hover:active {
+    transform: scale(0.98);
   }
 
   .gradient-text {
@@ -123,5 +138,19 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+}
+
+/* ── Reduced motion: fewer and gentler, not zero ──────────────────────────────
+   Keep opacity/color feedback (state indication), drop movement and ambient
+   loops. Framer-motion surfaces additionally branch via useReducedMotion(). */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-glow,
+  .animate-float,
+  .animate-shimmer {
+    animation: none;
+  }
+  .glass-hover:active {
+    transform: none;
   }
 }

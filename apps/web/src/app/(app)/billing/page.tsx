@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import type { CostEstimate, PlanTier } from "@fable/shared";
 import { api } from "@/lib/api";
 import { PageHeader } from "@/components/widgets/page-header";
@@ -53,7 +54,7 @@ export default function BillingPage() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.3, ease: EASE_OUT }}
             className="grid gap-4 xl:grid-cols-[2fr_1fr]"
           >
             <PlanHero
@@ -68,7 +69,7 @@ export default function BillingPage() {
           <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.04 }}
+            transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(1) }}
             className="space-y-3"
           >
             <div>
@@ -83,7 +84,7 @@ export default function BillingPage() {
           <motion.section
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.08 }}
+            transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(2) }}
             className="space-y-3"
           >
             <div>

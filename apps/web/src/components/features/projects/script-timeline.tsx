@@ -20,6 +20,7 @@ import {
 import type { SceneT, ScriptPlan } from "@fable/shared";
 import { formatDuration } from "@fable/shared";
 import { api } from "@/lib/api";
+import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { WyrQuestionCard } from "./wyr-question-list";
 
@@ -98,7 +99,7 @@ export function ScriptTimeline({ projectId, script, editable }: ScriptTimelinePr
               key={`${scene.index}-${scene.kind}`}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: Math.min(i, 12) * 0.04 }}
+              transition={{ duration: 0.3, ease: EASE_OUT, delay: Math.min(i, 12) * 0.04 }}
               className="relative"
             >
               <span

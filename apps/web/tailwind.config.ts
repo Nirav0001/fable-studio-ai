@@ -2,6 +2,9 @@ import type { Config } from "tailwindcss";
 
 const config: Config = {
   darkMode: "class",
+  // hover: variants only apply on devices that actually hover — stops touch
+  // taps from leaving cards stuck in their zoomed/hover state.
+  future: { hoverOnlyWhenSupported: true },
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     container: {

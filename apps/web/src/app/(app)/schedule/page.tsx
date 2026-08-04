@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { addDays, addWeeks, format, startOfWeek, subWeeks } from "date-fns";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -122,7 +123,7 @@ export default function SchedulePage() {
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: 0.3, ease: EASE_OUT }}
         className="flex flex-wrap items-center gap-3"
       >
         <div className="flex items-center gap-1.5">
@@ -197,7 +198,7 @@ export default function SchedulePage() {
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.04 }}
+        transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(1) }}
         className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground"
       >
         <span className="font-medium text-foreground/70">
@@ -251,7 +252,7 @@ export default function SchedulePage() {
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.08 }}
+        transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(2) }}
       >
         {initialLoading ? (
           <div className="glass space-y-0 overflow-hidden rounded-2xl p-0">

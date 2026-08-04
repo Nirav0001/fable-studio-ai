@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Lightbulb } from "lucide-react";
 import type { ViralScore } from "@fable/shared";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { cn, scoreColor } from "@/lib/utils";
 import { ScoreDial } from "@/components/widgets/score-dial";
 
@@ -47,7 +48,7 @@ export function ViralPanel({ viral }: ViralPanelProps) {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4 }}
+            transition={{ duration: 0.35, ease: EASE_OUT }}
             className="flex shrink-0 flex-col items-center gap-2 text-center"
           >
             <ScoreDial score={viral.total} size={150} />
@@ -64,10 +65,10 @@ export function ViralPanel({ viral }: ViralPanelProps) {
                   <span className="w-28 shrink-0 text-xs text-muted-foreground">{label}</span>
                   <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-secondary/70">
                     <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${value}%` }}
-                      transition={{ duration: 0.7, delay: i * 0.05, ease: "easeOut" }}
-                      className={cn("h-full rounded-full bg-gradient-to-r", barColor(value))}
+                      initial={{ transform: "scaleX(0)" }}
+                      animate={{ transform: `scaleX(${value / 100})` }}
+                      transition={{ duration: 0.35, ease: EASE_OUT, delay: staggerDelay(i) }}
+                      className={cn("h-full w-full origin-left rounded-full bg-gradient-to-r", barColor(value))}
                     />
                   </div>
                   <span className={cn("w-8 shrink-0 text-right text-xs font-semibold tabular-nums", scoreColor(value))}>

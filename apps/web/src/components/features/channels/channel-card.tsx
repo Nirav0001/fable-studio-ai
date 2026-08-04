@@ -8,6 +8,7 @@ import { Eye, Film, Link2, Loader2, Users, type LucideIcon } from "lucide-react"
 import type { ChannelSummary } from "@fable/shared";
 import { formatCompact } from "@fable/shared";
 import { api, ApiError } from "@/lib/api";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { CHANNEL_TYPE_META } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -57,7 +58,7 @@ export function ChannelCard({ channel, index = 0 }: { channel: ChannelSummary; i
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: index * 0.04 }}
+      transition={{ duration: 0.3, ease: EASE_OUT, delay: staggerDelay(index) }}
     >
       <Link href={`/channels/${channel.id}`} className="glass glass-hover block rounded-2xl p-5">
         <div className="flex items-start justify-between gap-3">

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { motion } from "framer-motion";
+import { ENTER_FAST } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 export interface PageHeaderProps {
@@ -16,7 +17,7 @@ export function PageHeader({ title, description, actions, className }: PageHeade
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
+      transition={{ ...ENTER_FAST }}
       className={cn("mb-6 flex flex-wrap items-end justify-between gap-3", className)}
     >
       <div className="min-w-0">

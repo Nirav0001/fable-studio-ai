@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { ArrowRight, Clock3, MousePointerClick, Sparkles } from "lucide-react";
+import { EASE_OUT, staggerDelay } from "@/lib/motion";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -122,10 +123,12 @@ export function BestTimes({ channelId }: { channelId: string | null }) {
                   </p>
                   <div className="mt-1 h-1 overflow-hidden rounded-full bg-secondary">
                     <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(100, Math.max(0, t.score))}%` }}
-                      transition={{ duration: 0.6, delay: 0.15 + i * 0.04, ease: "easeOut" }}
+                      className="h-full w-full origin-left rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"
+                      initial={{ transform: "scaleX(0)" }}
+                      animate={{
+                        transform: `scaleX(${Math.min(100, Math.max(0, t.score)) / 100})`,
+                      }}
+                      transition={{ duration: 0.35, ease: EASE_OUT, delay: staggerDelay(i) }}
                     />
                   </div>
                 </div>

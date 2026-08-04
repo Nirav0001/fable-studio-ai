@@ -60,7 +60,8 @@ export function CommandMenu() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="overflow-hidden p-0 sm:max-w-lg">
+      {/* Keyboard-toggled 100+ times/day — no animation, ever (Raycast rule). */}
+      <DialogContent animation="none" className="overflow-hidden p-0 sm:max-w-lg">
         <DialogTitle className="sr-only">Command palette</DialogTitle>
         <Command className="bg-transparent" loop>
           <Command.Input

@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, Eye, Film, TrendingDown, TrendingUp } from "lucide-react";
 import type { VideoSummary } from "@fable/shared";
 import { fnv1a, formatCompact, formatDuration, seededRandom } from "@fable/shared";
+import { EASE_OUT } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { ScoreDial } from "@/components/widgets/score-dial";
 import { RetentionCurve } from "@/components/charts/retention-curve";
@@ -144,21 +145,24 @@ export function TopVideos({ tone, videos, loading }: TopVideosProps) {
                 <AnimatePresence initial={false}>
                   {expanded && (
                     <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25, ease: "easeOut" }}
+                      className="grid"
+                      initial={{ gridTemplateRows: "0fr", opacity: 0 }}
+                      animate={{ gridTemplateRows: "1fr", opacity: 1 }}
+                      exit={{ gridTemplateRows: "0fr", opacity: 0 }}
+                      transition={{ duration: 0.25, ease: EASE_OUT }}
                     >
-                      <div className="border-t border-border/60 px-3 pb-3 pt-2.5">
-                        <div className="mb-1.5 flex items-center justify-between">
-                          <p className="text-[11px] font-medium text-muted-foreground">
-                            Audience retention
-                          </p>
-                          <p className="text-[10px] text-muted-foreground/70">
-                            % still watching vs video position
-                          </p>
+                      <div className="min-h-0 overflow-hidden">
+                        <div className="border-t border-border/60 px-3 pb-3 pt-2.5">
+                          <div className="mb-1.5 flex items-center justify-between">
+                            <p className="text-[11px] font-medium text-muted-foreground">
+                              Audience retention
+                            </p>
+                            <p className="text-[10px] text-muted-foreground/70">
+                              % still watching vs video position
+                            </p>
+                          </div>
+                          <RetentionCurve points={retentionPoints(video)} />
                         </div>
-                        <RetentionCurve points={retentionPoints(video)} />
                       </div>
                     </motion.div>
                   )}
