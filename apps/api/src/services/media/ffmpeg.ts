@@ -395,9 +395,12 @@ async function renderFiltersToVideo(
   }
   const voiceBase = nextInput;
   for (const track of voice) {
-    // discardcorrupt: drop a damaged packet rather than aborting the whole
-    // render. Tracks are decode-verified upstream; this is the safety net.
-    args.push(...QUEUE, "-fflags", "+discardcorrupt", "-i", track.path);
+    // NO +discardcorrupt here. Dropping damaged packets silently produces
+    // stuttering, glitchy narration — a worse outcome than failing, because
+    // the broken video still gets published. Tracks are decode-verified
+    // upstream, so anything reaching ffmpeg should be clean; if it isn't, the
+    // render must fail loudly.
+    args.push(...QUEUE, "-i", track.path);
     nextInput++;
   }
   let tickIdx = -1;

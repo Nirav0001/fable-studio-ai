@@ -195,9 +195,32 @@ async function synthSapiBatch(
 }
 
 /**
+ * Thrown when TTS providers ARE configured but none could produce audio —
+ * almost always exhausted credits or a rejected key.
+ *
+ * This must never be swallowed into a music-only render: silently shipping
+ * voiceless videos burns render time and publishes broken content while the
+ * owner believes their paid voice is being used.
+ */
+export class VoiceoverUnavailableError extends Error {
+  constructor(public reason: string) {
+    super(`Voiceover unavailable — ${reason}`);
+    this.name = "VoiceoverUnavailableError";
+  }
+}
+
+/** Provider failures that mean "stop", not "try the next line". */
+function isCreditOrAuthFailure(message: string): boolean {
+  return /\b(401|402|403|429)\b|quota|credit|insufficient|unauthorized|rate limit/i.test(message);
+}
+
+/**
  * Synthesize voiceover lines into per-line audio files.
- * Provider chain: OpenAI TTS → ElevenLabs → Windows SAPI (offline).
- * Returns null when every provider fails — the render then ships music-only.
+ * Provider chain: ElevenLabs → OpenAI TTS → Windows SAPI (offline).
+ *
+ * Returns null ONLY when no provider is configured at all (mock/dev mode).
+ * If providers exist but all fail, throws VoiceoverUnavailableError so the
+ * caller fails loudly instead of degrading.
  */
 export async function synthesizeVoiceover(
   lines: VoiceoverLine[],
@@ -249,8 +272,11 @@ export async function synthesizeVoiceover(
     },
   ];
 
+  const failures: string[] = [];
+  let anyEnabled = false;
   for (const provider of providers) {
     if (!provider.enabled) continue;
+    anyEnabled = true;
     try {
       const tracks = await provider.run();
       // Probe AND decode-verify every file — a corrupt clip must never reach
@@ -274,10 +300,22 @@ export async function synthesizeVoiceover(
       log.info(`Voiceover: ${good.length}/${usable.length} lines via ${provider.name}`);
       return good;
     } catch (err) {
-      log.warn(`Voiceover provider ${provider.name} failed: ${err instanceof Error ? err.message : String(err)}`);
+      const message = err instanceof Error ? err.message : String(err);
+      failures.push(`${provider.name}: ${message}`);
+      log.warn(`Voiceover provider ${provider.name} failed: ${message}`);
     }
   }
-  return null;
+
+  // No keys at all — music-only is the intended behaviour here.
+  if (!anyEnabled) return null;
+
+  const summary = failures.join(" | ");
+  const credits = failures.some(isCreditOrAuthFailure);
+  throw new VoiceoverUnavailableError(
+    credits
+      ? `your text-to-speech credits or API key were rejected (${summary})`
+      : `every configured provider failed (${summary})`,
+  );
 }
 
 /** Best-effort cleanup of a voiceover work directory. */

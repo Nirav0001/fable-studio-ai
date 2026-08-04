@@ -362,10 +362,14 @@ export async function processRender(payload: JobPayload): Promise<void> {
         let voice: VoiceTrack[] | undefined;
         if (script.voiceoverLines.length > 0) {
           await stage(20, "Synthesizing voiceover");
+          // synthesizeVoiceover THROWS when providers are configured but all
+          // fail (exhausted credits / rejected key). Let it propagate: a
+          // voiceless render would waste time and publish broken content
+          // while the owner assumes their paid voice is being used.
           voice =
             (await synthesizeVoiceover(script.voiceoverLines, branding.voice, voWorkDir)) ??
             undefined;
-          if (!voice) log.warn(`Voiceover unavailable for ${project.id} — rendering music-only`);
+          if (!voice) log.warn(`No TTS provider configured for ${project.id} — music-only render`);
         }
 
         // Stretch scenes to the measured speech so lines never overlap, and
