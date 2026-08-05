@@ -171,8 +171,16 @@ function drawBox(o: BoxOpts): string {
   return parts.join(":");
 }
 
+/**
+ * Half-open visibility window: t >= start AND t < end.
+ *
+ * ffmpeg's between() is inclusive at BOTH ends, so where one scene ends exactly
+ * where the next begins the boundary frame satisfied both. The outgoing artwork
+ * and the incoming artwork — still sitting at its drop-in offset — were drawn
+ * on the same frame, which reads as a jolt right before the emoji switches.
+ */
 function between(start: number, end: number): string {
-  return `between(t,${fmt(start)},${fmt(end)})`;
+  return `gte(t,${fmt(start)})*lt(t,${fmt(end)})`;
 }
 
 function wrapLines(text: string, maxChars: number, maxLines = 4): string[] {
@@ -837,7 +845,9 @@ export async function renderWyrVideo(
         start: tickWindows[0].start,
         end: tickWindows[tickWindows.length - 1].end,
         spin: true,
-        enableExpr: tickWindows.map((w) => `between(t,${fmt(w.start)},${fmt(w.end)})`).join("+"),
+        // Half-open for the same reason as between(): no double-draw on the
+        // frame where one question's timer hands over to the next.
+        enableExpr: tickWindows.map((w) => between(w.start, w.end)).join("+"),
       });
     }
   }
