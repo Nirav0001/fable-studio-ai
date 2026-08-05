@@ -477,7 +477,16 @@ async function renderFiltersToVideo(
         `[${imageBase + i}:v]scale=${img.width}:-2,setsar=1,fps=${FPS},format=rgba,pad=iw+60:ih+60:30:30:color=0x00000000,rotate=a='0.26*sin(5*PI*t)':fillcolor=none[img${i}]`,
       );
     } else {
-      graph.push(`[${imageBase + i}:v]scale=${img.width}:-2,setsar=1,format=rgba[img${i}]`);
+      // fps=FPS is load-bearing, not cosmetic. Stills are DECODED at 1fps
+      // (cheap), but a 1fps secondary into a timeline-enabled overlay made the
+      // production build flash the artwork for one frame at floor(start)+1/30
+      // — the next question's emojis blinked in ~0.7s early, then vanished
+      // until their real window. The spinning clock shares this graph and
+      // never flashed; its chain differs only by fps=FPS. Cloning the frame
+      // to 30fps keeps framesync in lockstep with the main timeline so the
+      // enable window is honored frame-accurately. (Decode still happens once
+      // per second — fps only duplicates frame references.)
+      graph.push(`[${imageBase + i}:v]scale=${img.width}:-2,setsar=1,fps=${FPS},format=rgba[img${i}]`);
     }
     const yExpr = img.dropIn ? `${img.y}-48*exp(-10*max(0\\,t-${fmt(img.start)}))` : String(img.y);
     const enable = img.enableExpr ?? `between(t,${fmt(img.start)},${fmt(img.end)})`;
