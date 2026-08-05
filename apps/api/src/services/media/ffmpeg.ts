@@ -235,6 +235,33 @@ function progressBar(totalSec: number): string {
   });
 }
 
+// ── Built-in music bed ───────────────────────────────────────────────────────
+
+/**
+ * A calm four-chord ambient pad (Am → F → C → G, eight seconds each, looping
+ * every 32s) synthesized entirely inside ffmpeg — no API, no credits, so a
+ * render ALWAYS has music even with every provider offline.
+ *
+ * Each chord is a root + third + fifth + sub-octave; the third widens to a
+ * major interval on F/C/G and stays minor on Am. A slow swell breathes across
+ * the whole bed. Commas are escaped because ffmpeg splits source options on
+ * them.
+ */
+function peacefulPadExpr(): string {
+  const m = "mod(t\\,32)";
+  // Am(A3) → F(F3) → C(C3) → G(G3)
+  const root = `if(lt(${m}\\,8)\\,220\\,if(lt(${m}\\,16)\\,174.61\\,if(lt(${m}\\,24)\\,130.81\\,196)))`;
+  const third = `if(lt(${m}\\,8)\\,1.2\\,1.25)`; // minor on Am, major elsewhere
+  const swell = "(0.74+0.26*sin(2*PI*0.06*t))";
+  const voices = [
+    `sin(2*PI*(${root})*t)`,
+    `0.7*sin(2*PI*(${root})*(${third})*t)`,
+    `0.6*sin(2*PI*(${root})*1.5*t)`,
+    `0.3*sin(2*PI*(${root})*0.5*t)`,
+  ].join("+");
+  return `0.05*(${voices})*${swell}`;
+}
+
 // ── ffmpeg process runner ────────────────────────────────────────────────────
 
 /**
@@ -372,8 +399,9 @@ async function renderFiltersToVideo(
     ...QUEUE,
     "-f", "lavfi", "-i", `color=c=${bgColor}:s=${W}x${H}:r=${FPS}:d=${d}`,
   ];
-  // Input 1 — music bed: real file (looped) or a synthesized peaceful pad
-  // (soft A-major triad with a slow breathing LFO).
+  // Input 1 — music bed: a real file (looped) when one is available,
+  // otherwise the built-in peaceful pad. The pad needs no API and no
+  // credits, so every render always has music.
   if (av.musicPath) {
     args.push(...QUEUE, "-stream_loop", "-1", "-i", av.musicPath);
   } else {
@@ -381,7 +409,7 @@ async function renderFiltersToVideo(
       ...QUEUE,
       "-f", "lavfi",
       "-i",
-      `aevalsrc='0.055*(sin(2*PI*220*t)+0.8*sin(2*PI*277.2*t)+0.65*sin(2*PI*329.6*t))*(0.75+0.25*sin(2*PI*0.11*t))':s=44100:d=${d}`,
+      `aevalsrc='${peacefulPadExpr()}':s=44100:d=${d}`,
     );
   }
 
@@ -462,8 +490,15 @@ async function renderFiltersToVideo(
   if (strips.length === 0) graph.push(`[vtext]null[vout]`);
 
   // ── audio graph: bed + ticks + whooshes + delay-placed voice lines ──
-  const bedVolume = av.musicPath ? (voice.length ? 0.12 : 0.2) : 1.0;
-  graph.push(`[1:a]aresample=44100,volume=${bedVolume},afade=t=in:d=1[bed]`);
+  // The synthesized pad is quiet by construction, so it needs a much higher
+  // gain than a real music file. Both duck under narration.
+  const bedVolume = av.musicPath ? (voice.length ? 0.12 : 0.2) : voice.length ? 2.6 : 3.6;
+  const fadeOut = Math.max(0, Number(d) - 2);
+  graph.push(
+    // lowpass rounds off the synth edge into something genuinely soft, and the
+    // bed fades in and out so it never starts or stops abruptly.
+    `[1:a]aresample=44100,lowpass=f=2400,volume=${bedVolume},afade=t=in:d=2,afade=t=out:st=${fmt(fadeOut)}:d=2[bed]`,
+  );
   const mixInputs = ["[bed]"];
   if (tickIdx >= 0) {
     graph.push(`[${tickIdx}:a]anull[ticks]`);

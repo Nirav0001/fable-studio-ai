@@ -34,10 +34,19 @@ export const SLOT_STATUSES = ["scheduled", "queued", "uploading", "uploaded", "f
 
 export const CAPTION_STYLES = ["beast", "clean", "karaoke", "comic", "minimal"] as const;
 
+// The id's first segment IS the provider voice name (see openaiVoice() in
+// services/media/voiceover.ts) — keep that prefix accurate when editing.
 export const VOICE_PRESETS = [
-  { id: "onyx-uk", label: "Ryan — UK Male, energetic", provider: "openai", gender: "male", accent: "british" },
-  { id: "nova-us", label: "Nova — US Female, upbeat", provider: "openai", gender: "female", accent: "american" },
-  { id: "echo-us", label: "Echo — US Male, deep", provider: "openai", gender: "male", accent: "american" },
+  { id: "onyx-uk", label: "Onyx — deep, authoritative", provider: "openai", gender: "male", accent: "british" },
+  { id: "nova-us", label: "Nova — bright, upbeat", provider: "openai", gender: "female", accent: "american" },
+  { id: "echo-us", label: "Echo — calm, measured", provider: "openai", gender: "male", accent: "american" },
+  { id: "fable-uk", label: "Fable — warm storyteller", provider: "openai", gender: "male", accent: "british" },
+  { id: "shimmer-us", label: "Shimmer — light, friendly", provider: "openai", gender: "female", accent: "american" },
+  { id: "alloy-us", label: "Alloy — neutral, clear", provider: "openai", gender: "male", accent: "american" },
+  { id: "ash-us", label: "Ash — punchy, confident", provider: "openai", gender: "male", accent: "american" },
+  { id: "sage-us", label: "Sage — smooth, relaxed", provider: "openai", gender: "female", accent: "american" },
+  { id: "coral-us", label: "Coral — expressive, lively", provider: "openai", gender: "female", accent: "american" },
+  { id: "ballad-uk", label: "Ballad — soft, emotive", provider: "openai", gender: "male", accent: "british" },
   { id: "aria-uk", label: "Aria — UK Female, warm", provider: "elevenlabs", gender: "female", accent: "british" },
   { id: "blitz-au", label: "Blitz — AU Male, hyper", provider: "elevenlabs", gender: "male", accent: "australian" },
 ] as const;

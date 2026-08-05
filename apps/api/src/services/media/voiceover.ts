@@ -69,11 +69,26 @@ const DEFAULT_VOICE: VoiceConfig = {
 };
 
 /** Map our voice presets onto OpenAI TTS voice names. */
+/** Every voice gpt-4o-mini-tts accepts. Longest names first so "ash" can't
+ *  shadow a longer id that merely contains it. */
+const OPENAI_VOICES = [
+  "shimmer",
+  "ballad",
+  "alloy",
+  "coral",
+  "fable",
+  "verse",
+  "nova",
+  "onyx",
+  "echo",
+  "sage",
+  "ash",
+] as const;
+
 function openaiVoice(voice: VoiceConfig): string {
   const id = voice.voiceId.toLowerCase();
-  for (const name of ["onyx", "nova", "echo", "alloy", "fable", "shimmer"]) {
-    if (id.includes(name)) return name;
-  }
+  const match = OPENAI_VOICES.find((name) => id.includes(name));
+  if (match) return match;
   return voice.gender === "female" ? "nova" : "onyx";
 }
 
