@@ -25,6 +25,8 @@ const voiceSchema = z.object({
   accent: z.string().min(1).max(40),
   energy: z.enum(["calm", "medium", "high", "hyper"]),
   emotion: z.enum(["neutral", "excited", "dramatic", "funny"]),
+  /** "random" narrates each video with a different preset (seeded per video). */
+  mode: z.enum(["fixed", "random"]).optional(),
 });
 
 const brandingSchema = z

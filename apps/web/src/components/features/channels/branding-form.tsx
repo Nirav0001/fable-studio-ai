@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -43,6 +44,7 @@ function normalizeBranding(raw: Partial<Branding> | undefined): Branding {
       accent: voice.accent ?? "british",
       energy: voice.energy ?? "high",
       emotion: voice.emotion ?? "excited",
+      mode: voice.mode ?? "fixed",
     },
   };
 }
@@ -121,9 +123,27 @@ export function BrandingForm({
             <Volume2 className="h-4 w-4 text-primary" /> Voiceover
           </h3>
           <div className="mt-4 space-y-4">
-            <div className="space-y-1.5">
-              <Label>Voice preset</Label>
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-secondary/30 p-3">
+              <div className="min-w-0">
+                <Label htmlFor="voice-random" className="text-sm font-medium">
+                  Surprise me each video
+                </Label>
+                <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                  Picks a different narrator per video instead of using the one below. Re-rendering
+                  a video keeps its voice, so nothing changes under you.
+                </p>
+              </div>
+              <Switch
+                id="voice-random"
+                checked={b.voice.mode === "random"}
+                onCheckedChange={(on) => setVoice({ mode: on ? "random" : "fixed" })}
+              />
+            </div>
+
+            <div className={cn("space-y-1.5", b.voice.mode === "random" && "opacity-50")}>
+              <Label>{b.voice.mode === "random" ? "Voice preset (ignored while random)" : "Voice preset"}</Label>
               <Select
+                disabled={b.voice.mode === "random"}
                 value={b.voice.voiceId}
                 onValueChange={(id) => {
                   const preset = VOICE_PRESETS.find((p) => p.id === id);

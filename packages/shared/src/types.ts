@@ -65,6 +65,12 @@ export interface VoiceConfig {
   accent: string;
   energy: "calm" | "medium" | "high" | "hyper";
   emotion: "neutral" | "excited" | "dramatic" | "funny";
+  /**
+   * "fixed" (default) always narrates with voiceId. "random" picks a different
+   * voice per video, seeded by project id so a given video always re-renders
+   * with the same voice.
+   */
+  mode?: "fixed" | "random";
 }
 
 export interface UploadDefaults {

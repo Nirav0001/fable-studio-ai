@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { mkdir } from "node:fs/promises";
-import { clamp, safeJson } from "@fable/shared";
+import { VOICE_PRESETS, clamp, fnv1a, pick, safeJson, seededRandom } from "@fable/shared";
 import type {
   Branding,
   EditPlan,
@@ -9,6 +9,7 @@ import type {
   ThumbnailVariant,
   TranscriptSegment,
   ViralScore,
+  VoiceConfig,
   WyrConfig,
 } from "@fable/shared";
 import type { Clip } from "@prisma/client";
@@ -42,6 +43,31 @@ const log = createLogger("render");
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Pick the narrator for one video.
+ *
+ * With voice.mode === "random" a different preset is chosen per video, seeded
+ * by project id — so the choice varies across a batch but re-rendering the
+ * same project always yields the same voice (no surprise swaps on retry).
+ * Anything else keeps the channel's configured voice.
+ */
+function resolveVoice(
+  configured: Partial<VoiceConfig> | undefined,
+  projectId: string,
+): Partial<VoiceConfig> | undefined {
+  if (configured?.mode !== "random") return configured;
+  const pool = VOICE_PRESETS.filter((p) => p.provider === "openai");
+  if (pool.length === 0) return configured;
+  const preset = pick(seededRandom(fnv1a(`voice:${projectId}`)), pool);
+  return {
+    ...configured,
+    provider: preset.provider,
+    voiceId: preset.id,
+    gender: preset.gender,
+    accent: preset.accent,
+  };
 }
 
 function emptyViral(): ViralScore {
@@ -367,8 +393,11 @@ export async function processRender(payload: JobPayload): Promise<void> {
           // voiceless render would waste time and publish broken content
           // while the owner assumes their paid voice is being used.
           voice =
-            (await synthesizeVoiceover(script.voiceoverLines, branding.voice, voWorkDir)) ??
-            undefined;
+            (await synthesizeVoiceover(
+              script.voiceoverLines,
+              resolveVoice(branding.voice, project.id),
+              voWorkDir,
+            )) ?? undefined;
           if (!voice) log.warn(`No TTS provider configured for ${project.id} — music-only render`);
         }
 
