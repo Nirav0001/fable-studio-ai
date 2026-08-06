@@ -29,79 +29,83 @@ function providerLabel(provider: HealthReport["aiProvider"]): string {
   }
 }
 
+/** Anything you can fix yourself from this page — everything else is server config. */
+const IN_PROVIDER_KEYS = "Save it in Provider keys above.";
+
 function buildRows(h: HealthReport): IntegrationRow[] {
   return [
     {
       label: "Database",
       active: h.db,
       detail: h.db ? "Connected" : "Unreachable",
-      hint: "Check DATABASE_URL in apps/api/.env",
+      hint: "Server config — check DATABASE_URL.",
     },
     {
       label: "Queue",
       active: h.queueDriver === "bullmq",
       detail: h.queueDriver === "bullmq" ? "BullMQ + Redis" : "In-memory driver",
-      hint: "Set REDIS_URL in apps/api/.env to enable BullMQ",
+      hint: "Server config — set REDIS_URL to switch to BullMQ.",
     },
     {
       label: "FFmpeg",
       active: h.ffmpeg,
       detail: h.ffmpeg ? "Rendering enabled" : "Simulated renders",
-      hint: "Install ffmpeg or set FFMPEG_PATH in apps/api/.env",
+      hint: "Server config — install ffmpeg or set FFMPEG_PATH.",
     },
     {
       label: "yt-dlp",
       active: h.ytdlp,
       detail: h.ytdlp ? "Source download enabled" : "Mock transcripts",
-      hint: "Install yt-dlp or set YTDLP_PATH in apps/api/.env",
+      hint: "Server config — install yt-dlp or set YTDLP_PATH.",
     },
     {
       label: "AI provider",
       active: h.aiProvider !== "mock",
       detail: providerLabel(h.aiProvider),
-      hint: "Add OPENAI_API_KEY, ANTHROPIC_API_KEY or GEMINI_API_KEY to apps/api/.env",
+      hint: "Save an OpenAI or Anthropic key in Provider keys above.",
     },
     {
       label: "OpenAI",
       active: h.providers.openai,
       detail: h.providers.openai ? "Key set" : "No key",
-      hint: "Add OPENAI_API_KEY to apps/api/.env",
+      hint: IN_PROVIDER_KEYS,
     },
     {
       label: "Anthropic",
       active: h.providers.anthropic,
       detail: h.providers.anthropic ? "Key set" : "No key",
-      hint: "Add ANTHROPIC_API_KEY to apps/api/.env",
+      hint: IN_PROVIDER_KEYS,
     },
     {
       label: "Gemini",
       active: h.providers.gemini,
+      // Gemini has no Provider-keys field — it is server-side only.
       detail: h.providers.gemini ? "Key set" : "No key",
-      hint: "Add GEMINI_API_KEY to apps/api/.env",
+      hint: "Server config — set GEMINI_API_KEY. Optional; OpenAI covers this.",
     },
     {
       label: "ElevenLabs",
       active: h.providers.elevenlabs,
       detail: h.providers.elevenlabs ? "Key set" : "Mock voiceover",
-      hint: "Add ELEVENLABS_API_KEY to apps/api/.env",
+      hint: IN_PROVIDER_KEYS,
     },
     {
       label: "YouTube OAuth",
       active: h.youtube,
       detail: h.youtube ? "Client configured" : "Mock uploads",
-      hint: "Add YT_CLIENT_ID and YT_CLIENT_SECRET to apps/api/.env",
+      hint: "Add your OAuth client ID and secret in Provider keys above.",
     },
     {
       label: "Stripe",
       active: h.stripe,
       detail: h.stripe ? "Live billing" : "Mock billing",
-      hint: "Add STRIPE_SECRET_KEY to apps/api/.env",
+      hint: "Server config — set STRIPE_SECRET_KEY. Only needed to charge customers.",
     },
     {
       label: "Storage",
       active: h.storage === "r2",
       detail: h.storage === "r2" ? "Cloudflare R2" : "Local disk",
-      hint: "Add R2_ACCOUNT_ID, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY to apps/api/.env",
+      hint: "Server config — set the R2_* keys. Local disk works fine.",
     },
   ];
 }
