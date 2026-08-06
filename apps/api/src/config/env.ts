@@ -51,15 +51,15 @@ export const env = {
   },
   ffmpegPath: process.env.FFMPEG_PATH ?? "ffmpeg",
   ytdlpPath: process.env.YTDLP_PATH ?? "yt-dlp",
-  /** AI-disclosure at upload (plan amendment A3): when true, videos flagged
-   *  containsSyntheticMedia get `status.containsSyntheticMedia: true` in the
-   *  YouTube upload metadata. Feature-flagged for one release —
-   *  YT_SET_SYNTHETIC_DISCLOSURE=true|false overrides; the default is ON in
-   *  dev and OFF in production until verified against the live API. */
-  ytSetSyntheticDisclosure: bool(
-    process.env.YT_SET_SYNTHETIC_DISCLOSURE,
-    process.env.NODE_ENV !== "production",
-  ),
+  /** AI-disclosure at upload: videos flagged containsSyntheticMedia get
+   *  `status.containsSyntheticMedia: true` in the YouTube upload metadata.
+   *  ON everywhere by default — disclosing AI-generated content is a product
+   *  requirement, and a default that is off in production silently fails it.
+   *  The field is documented in the YouTube Data API (videos.insert, added
+   *  2024-10-30), so the earlier "unverified against the live API" hedge does
+   *  not apply. Set YT_SET_SYNTHETIC_DISCLOSURE=false to disable if an upload
+   *  ever rejects it. */
+  ytSetSyntheticDisclosure: bool(process.env.YT_SET_SYNTHETIC_DISCLOSURE, true),
   discordWebhookUrl: process.env.DISCORD_WEBHOOK_URL ?? "",
   /** Absolute path to storage root. Override with STORAGE_DIR to point at a
    *  mounted Railway volume for persistence across deploys. */
