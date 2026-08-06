@@ -412,6 +412,25 @@ export async function approveProject(userId: string, projectId: string, schedule
   if (project.status === "rendering") throw conflict("Wait for the render to finish first");
   if (project.status === "draft") throw badRequest("Generate the project before approving");
 
+  // A Video may only be born "ready" if a rendered file backs it. The creates
+  // below pass no filePath, so approving a never-rendered project used to mint
+  // filePath-NULL rows that autoScheduleVideos then flipped to "scheduled" —
+  // rows that die at upload with "Video has no rendered file to upload yet"
+  // (videos.service.ts) or, on a mock channel, get silently mock-published with
+  // no file at all. Render first; approve then reuses the render's own rows via
+  // the `existing` lookups below. Checked per kept clip, so a partially failed
+  // render cannot slip fileless rows in alongside good ones.
+  const renderedFor = new Set(
+    project.videos.filter((v) => v.filePath).map((v) => v.clipId ?? ""),
+  );
+  const missingRender =
+    project.type === "clips"
+      ? project.clips.some((c) => c.status === "kept" && !renderedFor.has(c.id))
+      : !renderedFor.has("");
+  if (missingRender) {
+    throw badRequest("Render the project before approving — there is no video file yet");
+  }
+
   const seo = safeJson<Partial<SeoPack>>(project.seoJson, {});
   const viral = safeJson<ViralScore>(project.viralJson, EMPTY_VIRAL);
   const script = safeJson<ScriptPlan>(project.scriptJson, EMPTY_SCRIPT);

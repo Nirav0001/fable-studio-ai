@@ -23,12 +23,14 @@ import { setupTestDb, type TestDbHarness } from "../../../tests/helpers/testDb";
 type PrismaMod = typeof import("../../lib/prisma");
 type ScheduleMod = typeof import("../schedule/schedule.service");
 type PruneMod = typeof import("../../queue/prune");
+type ProjectsMod = typeof import("../projects/projects.service");
 
 let harness: TestDbHarness;
 let app: Express;
 let prisma: PrismaMod["prisma"];
 let autoFill: ScheduleMod["autoFill"];
 let pruneExternalMedia: PruneMod["pruneExternalMedia"];
+let approveProject: ProjectsMod["approveProject"];
 
 // Seeded fixtures
 let ownerId: string;
@@ -62,6 +64,7 @@ beforeAll(async () => {
   app = appMod.createApp();
   ({ autoFill } = await import("../schedule/schedule.service"));
   ({ pruneExternalMedia } = await import("../../queue/prune"));
+  ({ approveProject } = await import("../projects/projects.service"));
 
   const passwordHash = bcrypt.hashSync("irrelevant", 4);
   const owner = await prisma.user.create({
@@ -272,6 +275,77 @@ describe("autoFill regression (A2)", () => {
     expect(await prisma.scheduleSlot.count({ where: { videoId: draftId } })).toBe(0);
     const draft = await prisma.video.findUnique({ where: { id: draftId } });
     expect(draft!.status).toBe("draft");
+  }, 15_000);
+});
+
+// ── approve must never mint a video with no rendered file ────────────────────
+//
+// Regression for the "Video has no rendered file to upload yet" bug: approving
+// a generated-but-never-rendered project created status:"ready" rows with a
+// NULL filePath, which auto-schedule then flipped to "scheduled" — unuploadable
+// rows that burned real posting slots.
+
+describe("approveProject render precondition", () => {
+  it("refuses a clips project whose kept clips were never rendered", async () => {
+    const channel = await prisma.channel.create({
+      data: { userId: ownerId, name: "Approve", handle: "approve", type: "clips" },
+    });
+    const project = await prisma.project.create({
+      data: { channelId: channel.id, title: "Unrendered", type: "clips", status: "review" },
+    });
+    await prisma.clip.create({
+      data: {
+        projectId: project.id,
+        index: 0,
+        startSec: 0,
+        endSec: 13,
+        title: "The Shot That Changed Everything!",
+        status: "kept",
+        score: 90,
+      },
+    });
+
+    await expect(approveProject(ownerId, project.id, true)).rejects.toThrow(/Render the project/i);
+
+    // Nothing was created and no slot was burned.
+    expect(await prisma.video.count({ where: { projectId: project.id } })).toBe(0);
+    expect(await prisma.scheduleSlot.count({ where: { channelId: channel.id } })).toBe(0);
+  }, 15_000);
+
+  it("approves once a rendered video backs the kept clip", async () => {
+    const channel = await prisma.channel.create({
+      data: { userId: ownerId, name: "Approve OK", handle: "approveok", type: "clips" },
+    });
+    const project = await prisma.project.create({
+      data: { channelId: channel.id, title: "Rendered", type: "clips", status: "ready" },
+    });
+    const clip = await prisma.clip.create({
+      data: {
+        projectId: project.id,
+        index: 0,
+        startSec: 0,
+        endSec: 13,
+        title: "Rendered clip",
+        status: "kept",
+        score: 90,
+      },
+    });
+    // What the render worker would have produced.
+    await prisma.video.create({
+      data: {
+        channelId: channel.id,
+        projectId: project.id,
+        clipId: clip.id,
+        title: "Rendered clip",
+        status: "ready",
+        filePath: "renders/rendered-clip.mp4",
+      },
+    });
+
+    const res = await approveProject(ownerId, project.id, false);
+    expect(res.projectId).toBe(project.id);
+    // Reused the render's row rather than minting a second, file-less one.
+    expect(await prisma.video.count({ where: { projectId: project.id } })).toBe(1);
   }, 15_000);
 });
 

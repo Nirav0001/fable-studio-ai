@@ -119,7 +119,9 @@ export function ActionBar({ project }: ActionBarProps) {
             <span className="hidden sm:inline">Re-generate</span>
           </Button>
 
-          {project.status === "review" && (
+          {/* Stays available after a render so a project is never a dead end —
+              a render that failed or produced no file can simply be re-run. */}
+          {(project.status === "review" || project.status === "ready") && (
             <Button
               variant="secondary"
               size="sm"
@@ -139,7 +141,13 @@ export function ActionBar({ project }: ActionBarProps) {
           <Button
             size="sm"
             className="gap-1.5"
-            disabled={project.status !== "review" || approve.isPending}
+            // Approve is a POST-render action: the API refuses a project with no
+            // rendered file, and a completed render leaves the project "ready".
+            // Gating on "review" alone made Approve pre-render-only, which is
+            // exactly how file-less videos got created and scheduled.
+            disabled={
+              !(project.status === "review" || project.status === "ready") || approve.isPending
+            }
             onClick={() => setApproveOpen(true)}
           >
             <CheckCheck className="h-3.5 w-3.5" />
