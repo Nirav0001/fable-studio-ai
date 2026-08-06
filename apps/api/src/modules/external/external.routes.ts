@@ -21,6 +21,7 @@ import { env } from "../../config/env";
 import { AppError, badRequest, conflict, forbidden, notFound, unauthorized } from "../../lib/errors";
 import { createLogger } from "../../lib/logger";
 import { prisma } from "../../lib/prisma";
+import { getUserKeys } from "../../lib/providerKeys";
 import { handler, ok } from "../../lib/respond";
 import { heavyJobLimiter } from "../../middleware/rateLimit";
 
@@ -235,6 +236,36 @@ router.post(
       }
       throw err;
     }
+  }),
+);
+
+// ── GET /config — the pipeline's own settings, fetched with its API key ──────
+//
+// clip-engine runs on the operator's PC and needs the Anthropic key to score
+// moments. Rather than making them keep a second copy in a local file, it
+// reads the key they already saved in Settings → Provider keys. The key is
+// held in memory for the run and never written to disk on the client.
+//
+// This is the ONLY endpoint that returns a stored provider secret, so it is
+// deliberately narrow: API-key auth (never the session cookie), the heavy
+// limiter, exactly one field in the response, and every read logged with the
+// key id so an unexpected fetch is visible in the logs.
+router.get(
+  "/config",
+  requireApiKey,
+  heavyJobLimiter,
+  handler(async (req, res) => {
+    const keys = await getUserKeys(req.user!.id);
+    const anthropicKey = keys.anthropicKey ?? "";
+    log.info(
+      `clip-engine fetched config for user ${req.user!.id} (anthropic=${Boolean(anthropicKey)})`,
+    );
+    if (!anthropicKey) {
+      throw badRequest(
+        "No Anthropic API key saved. Add it in Settings → Provider keys, then re-run.",
+      );
+    }
+    ok(res, { anthropicKey });
   }),
 );
 

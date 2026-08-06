@@ -28,6 +28,12 @@ const FIELDS = [
     help: "Powers questions, SEO, thumbnails and Whisper transcription.",
   },
   {
+    field: "anthropicKey",
+    label: "Anthropic API key",
+    placeholder: "sk-ant-…",
+    help: "Used by clip-engine on your PC to rank moments and write clip titles.",
+  },
+  {
     field: "elevenlabsKey",
     label: "ElevenLabs API key",
     placeholder: "Your ElevenLabs key",
