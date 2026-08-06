@@ -10,6 +10,7 @@ import { ProfileSection, type SettingsUser } from "@/components/features/setting
 import { IntegrationsMatrix } from "@/components/features/settings/integrations-matrix";
 import { ApiKeysSection, type ApiKeyT } from "@/components/features/settings/api-keys-section";
 import { ProviderKeysSection } from "@/components/features/settings/provider-keys-section";
+import { ClipEngineSection } from "@/components/features/settings/clip-engine-section";
 import { NotificationPrefs } from "@/components/features/settings/notification-prefs";
 import { DangerZone } from "@/components/features/settings/danger-zone";
 
@@ -104,13 +105,21 @@ export default function SettingsPage() {
 
           <Section
             index={4}
+            title="Connect clip-engine"
+            description="Set up the clipping pipeline on your PC — it sends finished clips here as drafts for approval."
+          >
+            <ClipEngineSection />
+          </Section>
+
+          <Section
+            index={5}
             title="Notifications"
             description="What lands in your notification tray (and Discord, if enabled)."
           >
             <NotificationPrefs preferences={data.preferences} />
           </Section>
 
-          <Section index={5} title="Danger zone" description="Careful past this point.">
+          <Section index={6} title="Danger zone" description="Careful past this point.">
             <DangerZone />
           </Section>
         </>
