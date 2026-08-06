@@ -263,6 +263,8 @@ export interface VideoSummary {
   publishedAt?: string | null;
   views?: number;
   createdAt: string;
+  /** True when the media file was pruned; the row is kept but cannot publish. */
+  mediaExpired?: boolean;
 }
 
 export interface UpcomingSlot {

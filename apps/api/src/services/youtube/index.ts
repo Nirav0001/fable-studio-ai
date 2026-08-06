@@ -241,6 +241,12 @@ export async function uploadVideo(channel: Channel, video: Video): Promise<{ you
     status: {
       privacyStatus: video.visibility,
       selfDeclaredMadeForKids: false,
+      // A3 — AI-disclosure: declare synthetic/altered media at upload time for
+      // videos flagged by ingest. Behind YT_SET_SYNTHETIC_DISCLOSURE (see
+      // config/env.ts) for one release: default ON in dev, OFF in production.
+      ...(env.ytSetSyntheticDisclosure && video.containsSyntheticMedia
+        ? { containsSyntheticMedia: true }
+        : {}),
     },
   };
 

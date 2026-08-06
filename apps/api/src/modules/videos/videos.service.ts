@@ -26,6 +26,8 @@ interface VideoRow {
   youtubeId: string | null;
   publishedAt: Date | null;
   createdAt: Date;
+  /** Set by the prune tick when an expired draft's media was deleted. */
+  mediaExpired?: boolean;
 }
 
 interface StatRow {
@@ -76,6 +78,9 @@ export function toVideoSummary(
     publishedAt: video.publishedAt ? video.publishedAt.toISOString() : null,
     views: video.stats ? video.stats.reduce((sum, s) => sum + s.views, 0) : undefined,
     createdAt: video.createdAt.toISOString(),
+    // Surfaced so an expired draft is visibly dead in the dashboard instead of
+    // looking approvable right up until the upload fails.
+    mediaExpired: video.mediaExpired ?? false,
   };
 }
 
@@ -376,6 +381,13 @@ export async function repostVideo(userId: string, videoId: string) {
       status: "draft",
       visibility: video.visibility,
       viralScore,
+      // Provenance travels with the media. A repost publishes the SAME file,
+      // so dropping these would strip the AI disclosure and the rights credit
+      // from the copy — the original stays compliant while its repost quietly
+      // does not. clientRef is deliberately NOT copied: it is the ingest
+      // idempotency key and is unique per delivered clip.
+      containsSyntheticMedia: video.containsSyntheticMedia,
+      attribution: video.attribution,
     },
     include: { channel: { select: { name: true } } },
   });

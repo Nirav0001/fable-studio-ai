@@ -165,6 +165,17 @@ model Video {
   youtubeId     String?
   publishedAt   DateTime?
   createdAt     DateTime  @default(now())
+  // ── External ingest (clip-engine M5) ──────────────────────────────────────
+  // Idempotency key supplied by the external client; unique so a replayed
+  // delivery returns the existing row instead of creating a duplicate.
+  clientRef              String?  @unique
+  // AI-disclosure (A3): set status.containsSyntheticMedia at YouTube upload.
+  containsSyntheticMedia Boolean  @default(false)
+  // Provenance/credit line persisted with the clip (rights gate output).
+  attribution            String?
+  // Prune lifecycle (A4/ED17): true once the daily prune tick deleted the
+  // media file of a never-approved draft — the row itself is kept visible.
+  mediaExpired           Boolean  @default(false)
 
   stats  VideoStat[]
   slot   ScheduleSlot?

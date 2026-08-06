@@ -14,6 +14,7 @@ import { apiLimiter } from "./middleware/rateLimit";
 
 // Module routers — each module owns its own routes/services/validation.
 import authRouter from "./modules/auth/auth.routes";
+import externalRouter from "./modules/external/external.routes";
 import channelsRouter from "./modules/channels/channels.routes";
 import oauthRouter from "./modules/channels/oauth.routes";
 import projectsRouter from "./modules/projects/projects.routes";
@@ -101,6 +102,10 @@ export function createApp() {
   const v1 = express.Router();
   v1.use("/auth", authRouter);
   v1.use("/oauth", oauthRouter);
+  // External ingest authenticates with per-user API keys (Bearer), not the
+  // session cookie — it MUST mount before requireAuth (amendment A9/ED6).
+  // The global apiLimiter above still covers it.
+  v1.use("/external", externalRouter);
   // Everything below requires a session (or dev bypass).
   v1.use(requireAuth);
   v1.use("/channels", channelsRouter);

@@ -235,6 +235,15 @@ export async function autoFill(
       channelId,
       status: "ready",
       slot: null,
+      // Never schedule a video whose media was deliberately pruned. The prune
+      // tick expires never-approved external drafts (media deleted, row kept
+      // and flagged); without this guard such a row could be promoted to
+      // "ready", auto-filled into a slot, and only fail at upload with
+      // "Rendered video file is missing on disk" — after burning a slot.
+      // Deliberately NOT filtering on filePath: internally-rendered videos are
+      // marked ready by the render processor and a null path there is a
+      // separate pre-existing concern, out of this change's blast radius.
+      mediaExpired: false,
       ...(onlyVideoIds ? { id: { in: onlyVideoIds } } : {}),
     },
     orderBy: [{ viralScore: "desc" }, { createdAt: "asc" }],

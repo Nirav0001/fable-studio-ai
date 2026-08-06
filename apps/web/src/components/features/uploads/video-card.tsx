@@ -110,8 +110,14 @@ export function VideoCard({ video, channel, index, onEditSeo, onSchedule, onAbTe
   const thumb = thumbUrl(video.thumbnailPath);
   const isMockYt = Boolean(video.youtubeId?.startsWith("mock-"));
   const busy = video.status === "uploading" || video.status === "rendering";
-  const canUpload = !busy && video.status !== "published";
-  const canSchedule = video.status === "ready" || video.status === "draft" || video.status === "failed";
+  // An expired draft's media file was pruned after 30 days: the row survives so
+  // nothing vanishes silently, but there is no longer a file to publish. Block
+  // upload and scheduling here rather than letting it fail at the upload job.
+  const mediaExpired = Boolean(video.mediaExpired);
+  const canUpload = !busy && !mediaExpired && video.status !== "published";
+  const canSchedule =
+    !mediaExpired &&
+    (video.status === "ready" || video.status === "draft" || video.status === "failed");
 
   return (
     <motion.div
@@ -141,8 +147,16 @@ export function VideoCard({ video, channel, index, onEditSeo, onSchedule, onAbTe
           )}
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
 
-          <div className="absolute left-2.5 top-2.5">
+          <div className="absolute left-2.5 top-2.5 flex items-center gap-1.5">
             <StatusBadge status={video.status} />
+            {mediaExpired && (
+              <span
+                title="The video file was removed after 30 days without approval. Re-render it in clip-engine to publish."
+                className="rounded-md bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black backdrop-blur-sm"
+              >
+                Media expired
+              </span>
+            )}
           </div>
 
           <span className="absolute bottom-2.5 right-2.5 rounded-md bg-black/60 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-white backdrop-blur-sm">

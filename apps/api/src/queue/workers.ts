@@ -29,6 +29,7 @@ import {
 } from "../services/youtube";
 import type { JobPayload } from "./queue";
 import { BATCH_STAGE } from "../lib/batch";
+import { pruneExternalMedia } from "./prune";
 import { processGenerate } from "./processors/generate";
 import { processRender } from "./processors/render";
 import { processUpload } from "./processors/upload";
@@ -96,6 +97,25 @@ export async function startWorkers(): Promise<void> {
     5 * 60_000,
   );
   automationTimer.unref();
+
+  // External clip media lifecycle (A4/ED17): published >24h → file deleted;
+  // never-approved drafts >30d → owner notified, file deleted, row kept.
+  // Daily tick, plus one pass shortly after boot so restarts don't skip a day.
+  const pruneTimer = setInterval(
+    () =>
+      void runSafely("external-prune", async () => {
+        await pruneExternalMedia();
+      }),
+    24 * 60 * 60_000,
+  );
+  pruneTimer.unref();
+  setTimeout(
+    () =>
+      void runSafely("external-prune-boot", async () => {
+        await pruneExternalMedia();
+      }),
+    60_000,
+  ).unref();
 
   // Real statistics: refresh subs + per-video views/likes/comments + daily
   // channel analytics for every connected channel — 30s after boot, then
