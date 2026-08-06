@@ -191,12 +191,26 @@ export interface ScoreBreakdown {
   hookStrength: number;
 }
 
+/** One spoken word with its own timing — what karaoke captions need. */
+export interface TranscriptWord {
+  startSec: number;
+  endSec: number;
+  text: string;
+}
+
 export interface TranscriptSegment {
   startSec: number;
   endSec: number;
   text: string;
   speaker?: string;
   markers?: string[]; // "laughter", "shouting", "silence", "music"
+  /**
+   * Per-word timings when the source provides them (YouTube json3 caption
+   * tracks carry them; Whisper can too). Optional — older transcripts stored
+   * before this existed simply omit it and captions fall back to spreading a
+   * segment's words evenly, which visibly drifts from the speech.
+   */
+  words?: TranscriptWord[];
 }
 
 export interface EditPlan {

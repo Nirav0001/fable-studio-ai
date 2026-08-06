@@ -49,6 +49,40 @@ const log = createLogger("render");
  */
 const FULL_DOWNLOAD_MAX_SEC = 2 * 3600;
 
+/**
+ * Caption chunks for one clip window, in source time minus `shift`.
+ *
+ * Uses per-word timings when the transcript carries them (yt-dlp json3 caption
+ * tracks do) so each karaoke word appears exactly when it is said. Falls back
+ * to whole segments for older transcripts, where the renderer spreads a
+ * sentence's words evenly — readable, but visibly out of step with the speech.
+ */
+function captionChunksFor(
+  segments: TranscriptSegment[],
+  startSec: number,
+  endSec: number,
+  shift: number,
+): { startSec: number; endSec: number; text: string }[] {
+  const overlapping = segments.filter((s) => s.endSec > startSec && s.startSec < endSec);
+  const words = overlapping
+    .flatMap((s) => s.words ?? [])
+    .filter((w) => w.endSec > startSec && w.startSec < endSec)
+    .sort((a, b) => a.startSec - b.startSec);
+
+  if (words.length > 0) {
+    return words.map((w) => ({
+      startSec: w.startSec - shift,
+      endSec: w.endSec - shift,
+      text: w.text,
+    }));
+  }
+  return overlapping.map((s) => ({
+    startSec: s.startSec - shift,
+    endSec: s.endSec - shift,
+    text: s.text,
+  }));
+}
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -304,9 +338,11 @@ export async function processRender(payload: JobPayload): Promise<void> {
                 startSec: clip.startSec - shift,
                 endSec: clip.endSec - shift,
                 hook: mergedPlan.hookText || clip.hook || clip.title,
-                captions: transcriptSegments
-                  .filter((s) => s.endSec > clip.startSec && s.startSec < clip.endSec)
-                  .map((s) => ({ startSec: s.startSec - shift, endSec: s.endSec - shift, text: s.text })),
+                // Prefer per-word timings: one chunk per word makes the karaoke
+                // captions land on the syllable actually being spoken. Without
+                // them the renderer spreads a whole sentence's words evenly
+                // across its window, which visibly drifts from the audio.
+                captions: captionChunksFor(transcriptSegments, clip.startSec, clip.endSec, shift),
                 watermark: handleTag,
               },
               join(rendersDir, fileName),

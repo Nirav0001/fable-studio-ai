@@ -8,7 +8,7 @@
 import { execFile } from "node:child_process";
 import { readFile, readdir, unlink, mkdir } from "node:fs/promises";
 import { basename, join } from "node:path";
-import type { TranscriptSegment } from "@fable/shared";
+import type { TranscriptSegment, TranscriptWord } from "@fable/shared";
 import { fnv1a, seededRandom } from "@fable/shared";
 import { env } from "../../config/env";
 import { hasYtdlp } from "../../lib/capabilities";
@@ -217,7 +217,10 @@ async function transcribeWithWhisper(sourceUrl: string): Promise<TranscriptSegme
 interface Json3Event {
   tStartMs?: number;
   dDurationMs?: number;
-  segs?: { utf8?: string }[];
+  /** `tOffsetMs` is the word's offset from tStartMs — this is what makes
+   *  karaoke captions land on the right syllable. Dropping it (as this type
+   *  used to) forces the renderer to spread words evenly and drift. */
+  segs?: { utf8?: string; tOffsetMs?: number }[];
 }
 
 /**
@@ -262,6 +265,7 @@ async function fetchYoutubeCaptions(sourceUrl: string): Promise<TranscriptSegmen
 
     const segments: TranscriptSegment[] = [];
     let curText: string[] = [];
+    let curWords: TranscriptWord[] = [];
     let curStart = 0;
     let curEnd = 0;
     const flush = (): void => {
@@ -274,9 +278,25 @@ async function fetchYoutubeCaptions(sourceUrl: string): Promise<TranscriptSegmen
         const markers: string[] = [];
         if (/\blaugh|lmao|lol|haha/i.test(text)) markers.push("laughter");
         if (/[A-Z]{4,}|!{2,}/.test(text)) markers.push("shouting");
-        segments.push({ startSec: curStart, endSec: curEnd, text, markers });
+        // Each word runs until the next one starts (capped at 1s so a pause
+        // does not leave one word hanging). Strictly non-overlapping, so the
+        // renderer never draws two words on top of each other.
+        const words = curWords
+          .map((w, i) => {
+            const nextStart = curWords[i + 1]?.startSec ?? Math.max(curEnd, w.startSec + 0.4);
+            return { ...w, endSec: Math.min(nextStart, w.startSec + 1) };
+          })
+          .filter((w) => w.endSec - w.startSec >= 0.08);
+        segments.push({
+          startSec: curStart,
+          endSec: curEnd,
+          text,
+          markers,
+          ...(words.length > 0 ? { words } : {}),
+        });
       }
       curText = [];
+      curWords = [];
     };
 
     for (const event of events) {
@@ -295,6 +315,18 @@ async function fetchYoutubeCaptions(sourceUrl: string): Promise<TranscriptSegmen
         curStart = start;
       }
       curText.push(text);
+      // Keep each word's own timing. YouTube's rolling captions re-emit the
+      // same word across consecutive events, so drop a repeat that lands within
+      // 300ms of the one already recorded — otherwise two identical words would
+      // be drawn on top of each other.
+      for (const seg of event.segs ?? []) {
+        const word = (seg.utf8 ?? "").replace(/\n/g, " ").replace(/^>+/, "").trim();
+        if (!word) continue;
+        const at = start + (seg.tOffsetMs ?? 0) / 1000;
+        const prev = curWords[curWords.length - 1];
+        if (prev && prev.text === word && at - prev.startSec < 0.3) continue;
+        curWords.push({ startSec: at, endSec: at, text: word });
+      }
       curEnd = Math.max(curEnd, end);
     }
     flush();

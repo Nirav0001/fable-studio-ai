@@ -1147,7 +1147,16 @@ function wordEvents(
       events.push({ start: ws, end: Math.min(duration, ws + perM), word });
     });
   }
-  return events.slice(0, 160);
+  // One word on screen at a time. Chunks can overlap — rolling caption tracks
+  // re-emit words across events, and the per-chunk spread above can run past a
+  // chunk's own window — and two drawtext filters enabled together render on
+  // top of each other, turning "Please." + "pay" into unreadable mush. Sorting
+  // and closing each event at the next one's start makes that impossible.
+  events.sort((a, b) => a.start - b.start);
+  for (let i = 0; i < events.length - 1; i++) {
+    events[i].end = Math.min(events[i].end, events[i + 1].start);
+  }
+  return events.filter((e) => e.end - e.start >= 0.06).slice(0, 160);
 }
 
 /**
