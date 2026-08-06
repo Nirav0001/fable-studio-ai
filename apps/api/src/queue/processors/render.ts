@@ -41,6 +41,14 @@ import type { JobPayload } from "../queue";
 
 const log = createLogger("render");
 
+/**
+ * Longest source we will download whole before falling back to per-clip
+ * sections. Whole-source is the path that actually works (see the clips branch
+ * below), so this is deliberately generous — two hours of 720p is ~1.7GB, which
+ * the volume can hold and which every clip from that source then reuses.
+ */
+const FULL_DOWNLOAD_MAX_SEC = 2 * 3600;
+
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -217,20 +225,31 @@ export async function processRender(payload: JobPayload): Promise<void> {
         await delay(2000);
       }
 
-      // Real footage when the source can be fetched. Short sources download in
-      // full; long VODs (Twitch streams etc.) pull only each clip's window.
+      // Whole-source download is the RELIABLE path: yt-dlp fetches the DASH
+      // streams itself. Per-clip --download-sections instead hands the stream
+      // URL to ffmpeg, and YouTube now answers ffmpeg with 403 unless a PO
+      // token is supplied — every section fetch on a long source fails. That is
+      // what shipped a picture-less clip on 2026-08-06: the old 25-minute cap
+      // routed a 61-minute source down the section path, which failed, and the
+      // render silently fell back to captions on a flat colour.
+      //
+      // So: download in full whenever the source is a sane length (cached once,
+      // reused by every clip cut from it — a 61-minute 720p source is ~850MB at
+      // ~10MB/s), and keep sections only for sources too long to hold on disk.
       let sourcePath: string | null = null;
       let useSections = false;
       if (ffmpegOk && project.sourceUrl) {
         await stage(8, "Fetching source video");
         const durSec = await getSourceDurationSec(project.sourceUrl);
-        if (durSec > 0 && durSec <= 1500) {
+        if (durSec > 0 && durSec <= FULL_DOWNLOAD_MAX_SEC) {
           sourcePath = await ensureSourceVideo(project.sourceUrl);
-        } else {
-          useSections = true;
         }
-        if (!sourcePath && !useSections)
-          log.warn(`No source video for ${projectId} — using text-style render`);
+        if (!sourcePath) {
+          useSections = true;
+          log.warn(
+            `No whole-source download for ${projectId} (duration ${durSec}s) — falling back to per-clip sections`,
+          );
+        }
       }
       const transcriptSegments = safeJson<TranscriptSegment[]>(project.transcriptJson, []);
       const handleTag = project.channel.handle.startsWith("@")
@@ -253,6 +272,29 @@ export async function processRender(payload: JobPayload): Promise<void> {
           let clipSrc = sourcePath ? { path: sourcePath, fileStartSec: 0 } : null;
           if (!clipSrc && useSections && project.sourceUrl) {
             clipSrc = await ensureSourceSection(project.sourceUrl, clip.startSec, clip.endSec);
+            if (!clipSrc) {
+              // Section fetch is the unreliable one (ffmpeg gets 403 on DASH
+              // URLs). Pay for the whole source once rather than lose the clip.
+              const full = sourcePath ?? (await ensureSourceVideo(project.sourceUrl));
+              if (full) {
+                sourcePath = full;
+                clipSrc = { path: full, fileStartSec: 0 };
+              }
+            }
+          }
+          // A clips project exists to cut real footage. If the source cannot be
+          // fetched we FAIL — we never substitute the text-style render, which
+          // produces captions on a flat colour with no picture at all. One of
+          // those reached YouTube (2026-08-06): the section download for a
+          // 61-minute source blew the 7-minute timeout, ensureSourceSection
+          // returned null, and this branch happily shipped a blank video.
+          // Same rule as voiceover: degrade loudly, never silently.
+          if (!clipSrc && project.sourceUrl) {
+            throw new Error(
+              `Could not fetch source footage for "${clip.title}" — refusing to render a ` +
+                `text-only placeholder. Check the source URL is reachable and yt-dlp can ` +
+                `download it (long sources are fetched per-clip and may time out).`,
+            );
           }
           if (clipSrc) {
             const shift = clipSrc.fileStartSec;

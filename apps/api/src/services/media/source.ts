@@ -11,6 +11,14 @@ const log = createLogger("source");
 const DOWNLOAD_TIMEOUT_MS = 420_000;
 
 /**
+ * Whole-source downloads get longer: they are the reliable path (yt-dlp fetches
+ * DASH itself, where a per-clip section hands the URL to ffmpeg and YouTube
+ * answers 403), and a two-hour 720p source is ~1.7GB. At 7 minutes a slow link
+ * timed out mid-download and the caller silently rendered a picture-less clip.
+ */
+const FULL_DOWNLOAD_TIMEOUT_MS = 900_000;
+
+/**
  * Download (and cache) the source video for a clips/top5 project.
  * 720p mp4 cap keeps downloads fast and files manageable; clips are cut from
  * this local copy with ffmpeg. Returns null when yt-dlp is unavailable or the
@@ -107,7 +115,7 @@ export async function ensureSourceVideo(sourceUrl: string): Promise<string | nul
           "-o", path,
           "--", sourceUrl,
         ],
-        { timeout: DOWNLOAD_TIMEOUT_MS },
+        { timeout: FULL_DOWNLOAD_TIMEOUT_MS },
         (err) => (err ? reject(err) : resolve()),
       );
     });
