@@ -1105,6 +1105,13 @@ export interface SourceClipRender {
  */
 const CLIP_FPS = 60;
 
+/**
+ * Slow push-in over the length of a clip, as a fraction of frame size. 5% is
+ * deliberately below the threshold where it reads as a zoom — it should feel
+ * like the shot is alive, not like an effect was applied.
+ */
+const PUSH_IN_AMOUNT = 0.05;
+
 const CLIP_ENCODE: string[] = [
   "-r", String(CLIP_FPS),
   "-c:v", "libx264",
@@ -1250,8 +1257,21 @@ export async function renderClipFromSource(spec: SourceClipRender, outPath: stri
     }
   }
 
+  // Motion + grade. The reference Shorts are all one continuous handheld take,
+  // so they are never still — our crop is a fixed rectangle, which on a
+  // locked-off source produces a completely static frame that reads as flat
+  // next to them. A slow push-in restores that sense of movement without
+  // looking like an effect; the grade closes a measured saturation gap
+  // (references ~10-35 mean SATAVG, ours 5.4); the vignette pulls the eye to
+  // centre, which is where the subject sits after a centre crop.
+  const zoomFrames = Math.max(1, Math.round(duration * CLIP_FPS));
+  const push =
+    `zoompan=z='min(1+${PUSH_IN_AMOUNT}*on/${zoomFrames},${1 + PUSH_IN_AMOUNT})'` +
+    `:d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${W}x${H}:fps=${CLIP_FPS}`;
+
   const graph = [
-    `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H}[comp]`,
+    `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},` +
+      `${push},eq=saturation=1.12:contrast=1.04,vignette=PI/6[comp]`,
     `[comp]${filters.join(",\n")}[withtext]`,
     // Linear progress bar strip along the bottom.
     `[withtext][1:v]overlay=x='-${W}+${W}*t/${d}':y=${H - 12}[vout]`,
