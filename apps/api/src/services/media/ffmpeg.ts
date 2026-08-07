@@ -1265,7 +1265,16 @@ export async function renderClipFromSource(spec: SourceClipRender, outPath: stri
   // (references ~10-35 mean SATAVG, ours 5.4); the vignette pulls the eye to
   // centre, which is where the subject sits after a centre crop.
   const zoomFrames = Math.max(1, Math.round(duration * CLIP_FPS));
+  // The leading fps filter is LOAD-BEARING. zoompan with d=1 emits one output
+  // frame per INPUT frame while stamping them at its own fps, so a 30fps source
+  // into fps=60 yields half as many frames as the duration needs: the video
+  // plays at double speed while the audio, untouched, stays correct. Converting
+  // to 60fps first gives zoompan 60 real frames a second to consume. Measured:
+  // a 10s 30fps source rendered 5.00s without this and 10.00s with it; 60fps
+  // sources are identical either way, which is why it survived review — it was
+  // only ever tested on 60fps footage.
   const push =
+    `fps=${CLIP_FPS},` +
     `zoompan=z='min(1+${PUSH_IN_AMOUNT}*on/${zoomFrames},${1 + PUSH_IN_AMOUNT})'` +
     `:d=1:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${W}x${H}:fps=${CLIP_FPS}`;
 
