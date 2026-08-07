@@ -1096,11 +1096,20 @@ export interface SourceClipRender {
   wordKaraoke?: boolean;
 }
 
+/**
+ * Clips render at 60fps, unlike the 30fps synthetic WYR renders: source footage
+ * is usually 60fps and the reference Shorts all are, so halving it visibly
+ * stutters on fast pans. CRF 20 / preset faster replaces 26 / veryfast — at
+ * 1080x1920 the old setting left visible blocking on motion, which compounded
+ * with the upscale from the 720p source cap (now 1080p, see source.ts).
+ */
+const CLIP_FPS = 60;
+
 const CLIP_ENCODE: string[] = [
-  "-r", String(FPS),
+  "-r", String(CLIP_FPS),
   "-c:v", "libx264",
-  "-preset", "veryfast",
-  "-crf", "26",
+  "-preset", "faster",
+  "-crf", "20",
   "-pix_fmt", "yuv420p",
   "-c:a", "aac",
   "-b:a", "128k",
@@ -1189,26 +1198,28 @@ export async function renderClipFromSource(spec: SourceClipRender, outPath: stri
   }
 
   if (karaoke) {
-    // One giant word at a time, mid-frame; style rotates between white with
-    // heavy outline, black on yellow box, and yellow with outline (reference).
+    // Caption style, matched to the reference Shorts (2026-08-07): white
+    // uppercase on a tight black box, mid-frame, at a *moderate* size.
+    //
+    // What changed and why: this used to draw 108px comic-font words and rotate
+    // randomly between three treatments (white outline / black-on-yellow /
+    // yellow outline) keyed on a hash of the word. Against the references that
+    // read as amateur — they are all one consistent treatment, roughly 60px,
+    // in a condensed bold sans, and reserve colour for genuine emphasis rather
+    // than sprinkling it at random. Yellow is now earned: shouted words only
+    // (ALL CAPS in the transcript, or ending in "!").
     const YELLOW = "0xFFD400";
-    for (const [i, ev] of wordEvents(spec.captions, spec.startSec, duration).entries()) {
-      const variant = fnv1a(`${ev.word}:${i}`) % 10;
+    const SIZE = 62;
+    for (const ev of wordEvents(spec.captions, spec.startSec, duration)) {
       const en = between(ev.start, ev.end);
       const word = ev.word.toUpperCase();
-      if (variant < 5) {
-        filters.push(
-          drawText({ text: word, size: 108, y: 960, color: "white", enable: en, borderW: 11, borderColor: "black", font: "comic" }),
-        );
-      } else if (variant < 8) {
-        filters.push(
-          `drawtext=${fontOption("comic")}expansion=none:text='${sanitizeDrawtext(word)}':fontsize=108:fontcolor=black:box=1:boxcolor=${YELLOW}:boxborderw=22:x='(w-text_w)/2':y='960':enable='${en}'`,
-        );
-      } else {
-        filters.push(
-          drawText({ text: word, size: 108, y: 960, color: YELLOW, enable: en, borderW: 11, borderColor: "black", font: "comic" }),
-        );
-      }
+      const emphatic = /!\s*$/.test(ev.word) || (/^[A-Z][A-Z'’.,!?-]{2,}$/.test(ev.word.trim()));
+      const color = emphatic ? YELLOW : "white";
+      filters.push(
+        `drawtext=${fontOption("default")}expansion=none:text='${sanitizeDrawtext(word)}'` +
+          `:fontsize=${SIZE}:fontcolor=${color}:box=1:boxcolor=black@0.82:boxborderw=14` +
+          `:x='(w-text_w)/2':y='940':enable='${en}'`,
+      );
     }
   } else {
     // Bottom segment captions (top5 parts).

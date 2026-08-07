@@ -108,7 +108,11 @@ export async function ensureSourceVideo(sourceUrl: string): Promise<string | nul
         env.ytdlpPath,
         [
           "--js-runtimes", "node",
-          "-f", "bv*[height<=720][ext=mp4]+ba[ext=m4a]/b[height<=720][ext=mp4]/b[height<=720]",
+          // 1080p, not 720p. A 9:16 clip center-crops to ~31% of the source
+          // width, so a 1280x720 source gives only 405x720 real pixels blown up
+          // to 1080x1920 — a 2.67x upscale, and the reason clips looked soft.
+          // 1920x1080 gives 607x1080 for the same crop: 1.78x, visibly sharper.
+          "-f", "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/bv*[height<=1080]+ba/b[height<=1080]",
           "--merge-output-format", "mp4",
           "--no-playlist",
           "--force-overwrites",
